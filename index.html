@@ -26,8 +26,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- SheetJS -->
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <!-- SheetJS with Styles -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <!-- jsPDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -71,6 +71,10 @@
                     <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
                     <span>Báo cáo & Thống kê</span>
                 </button>
+                <button onclick="navigate('debt')" id="nav-debt" class="nav-item flex items-center gap-3 w-full p-3 rounded-xl transition-all">
+                    <i data-lucide="calculator" class="w-5 h-5"></i>
+                    <span>Công nợ theo tháng</span>
+                </button>
             </div>
         </div>
 
@@ -96,6 +100,10 @@
                     <input type="text" id="search-input" onkeyup="renderTable()" placeholder="Tìm kiếm booking..." class="bg-white border border-slate-200 rounded-full py-2 px-10 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all outline-none text-sm w-64">
                     <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i>
                 </div>
+                <button onclick="syncGoogleSheets()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-full font-semibold flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all active:scale-95">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    <span>Đồng bộ Sheets</span>
+                </button>
                 <button onclick="showAddModal()" class="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2 rounded-full font-semibold flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95">
                     <i data-lucide="plus" class="w-4 h-4"></i>
                     <span>Tạo Booking</span>
@@ -187,13 +195,15 @@
         <div id="page-bookings" class="page hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div class="bg-white rounded-3xl border border-slate-200/60 shadow-sm overflow-hidden">
                 <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/30">
-                    <div class="flex gap-4">
+                    <div class="flex flex-wrap gap-3">
                         <select id="filter-agency" onchange="renderTable()" class="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500/20">
                             <option value="">Tất cả Đại lý</option>
                         </select>
+                        <input type="date" id="filter-date" onchange="renderTable()" class="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500/20">
                         <select id="filter-status" onchange="renderTable()" class="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500/20">
                             <option value="">Tất cả Trạng thái</option>
-                            <option value="confirmed">Xác nhận</option>
+                            <option value="confirmed">Chưa xuất HĐ (Xác nhận)</option>
+                            <option value="invoiced">Đã xuất HĐ</option>
                             <option value="pending">Chờ xử lý</option>
                             <option value="cancelled">Đã hủy</option>
                         </select>
@@ -203,23 +213,25 @@
                             <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
                             Xuất Excel
                         </button>
-                        <button onclick="exportPDF()" class="flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-700 rounded-xl font-semibold hover:bg-rose-100 transition-all text-sm">
-                            <i data-lucide="file-type-2" class="w-4 h-4"></i>
-                            Xuất PDF
+                        <button onclick="syncBackToSheets()" class="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl font-semibold hover:bg-blue-100 transition-all text-sm" title="Tự động đồng bộ Hóa đơn lên Google Sheets">
+                            <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+                            Đồng bộ lên Sheets
                         </button>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
+                    <table class="w-full text-left border-collapse min-w-[800px]">
                         <thead class="bg-slate-50/50 text-slate-500 text-[10px] uppercase tracking-wider font-bold">
                             <tr>
-                                <th class="px-6 py-4">Ngày đến</th>
-                                <th class="px-6 py-4">Đại lý / Công ty</th>
-                                <th class="px-6 py-4">Tên Khách / Tour</th>
-                                <th class="px-6 py-4">Loại DV</th>
-                                <th class="px-6 py-4 text-center">Pax</th>
-                                <th class="px-6 py-4">Trạng thái</th>
-                                <th class="px-6 py-4 text-right">Thao tác</th>
+                                <th class="px-4 py-4 whitespace-nowrap border-b border-slate-200">Ngày</th>
+                                <th class="px-4 py-4 whitespace-nowrap border-b border-slate-200">Đại lý / Công ty</th>
+                                <th class="px-4 py-4 whitespace-nowrap border-b border-slate-200">Điều Hành</th>
+                                <th class="px-4 py-4 whitespace-nowrap border-b border-slate-200">Code</th>
+                                <th class="px-4 py-4 text-center whitespace-nowrap border-b border-slate-200">Pax</th>
+                                <th class="px-4 py-4 text-right whitespace-nowrap border-b border-slate-200">Tổng Tiền</th>
+                                <th class="px-4 py-4 text-center whitespace-nowrap border-b border-slate-200">Hóa Đơn</th>
+                                <th class="px-4 py-4 text-center whitespace-nowrap border-b border-slate-200">Trạng thái</th>
+                                <th class="px-4 py-4 text-right whitespace-nowrap border-b border-slate-200">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody id="main-booking-list" class="divide-y divide-slate-100 text-sm">
@@ -252,6 +264,86 @@
             </div>
         </div>
 
+        <!-- Page: Debt (Công nợ) -->
+        <div id="page-debt" class="page hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm mb-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900">Báo cáo Công nợ theo tháng</h2>
+                        <p class="text-sm text-slate-500 mt-1">Tổng hợp công nợ chi tiết theo từng Đại lý/Khách hàng</p>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <select id="debt-month-filter" onchange="renderDebtReport()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 outline-none focus:border-amber-500">
+                            <!-- Options populated via JS -->
+                        </select>
+                        <select id="debt-agency-filter" onchange="renderDebtReport()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 outline-none focus:border-amber-500">
+                            <option value="">Tất cả Công ty</option>
+                            <!-- Options populated via JS -->
+                        </select>
+                        <button onclick="exportDebtExcel()" class="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl font-semibold hover:bg-emerald-100 transition-all text-sm">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                            Xuất Excel
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <!-- Debt Summary Table (Hiện khi chọn Tất cả Công ty) -->
+                    <table id="debt-summary-table" class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50/50 text-slate-500 text-[10px] uppercase tracking-wider font-bold">
+                            <tr>
+                                <th class="px-6 py-4 rounded-tl-xl">Đại lý / Công ty</th>
+                                <th class="px-6 py-4 text-center">Số Booking</th>
+                                <th class="px-6 py-4 text-right">Tổng Tiền (VNĐ)</th>
+                                <th class="px-6 py-4 text-center rounded-tr-xl">Số lượng Hóa đơn</th>
+                            </tr>
+                        </thead>
+                        <tbody id="debt-list" class="divide-y divide-slate-100 text-sm">
+                            <!-- Dynamic Content -->
+                        </tbody>
+                        <tfoot class="bg-slate-50/80 font-bold text-slate-900 border-t-2 border-slate-200">
+                            <tr>
+                                <td class="px-6 py-4">TỔNG CỘNG</td>
+                                <td class="px-6 py-4 text-center" id="debt-total-bookings">0</td>
+                                <td class="px-6 py-4 text-right text-amber-600 text-base" id="debt-total-amount">0 đ</td>
+                                <td class="px-6 py-4 text-center" id="debt-total-invoices">0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <!-- Debt Detail Table (Hiện khi chọn 1 Công ty) -->
+                    <table id="debt-detail-table" class="w-full text-left border-collapse hidden">
+                        <thead class="bg-slate-50/50 text-slate-500 text-[10px] uppercase tracking-wider font-bold">
+                            <tr>
+                                <th class="px-3 py-3 border-b border-slate-200 whitespace-nowrap">Ngày</th>
+                                <th class="px-3 py-3 border-b border-slate-200 whitespace-nowrap">Điều Hành</th>
+                                <th class="px-3 py-3 border-b border-slate-200 whitespace-nowrap">Code</th>
+                                <th class="px-3 py-3 border-b border-slate-200 text-center whitespace-nowrap">Pax</th>
+                                <th class="px-3 py-3 border-b border-slate-200 text-right whitespace-nowrap">Giá Tour</th>
+                                <th class="px-3 py-3 border-b border-slate-200 text-right whitespace-nowrap">Xe Đạp</th>
+                                <th class="px-3 py-3 border-b border-slate-200 text-right whitespace-nowrap">Nước</th>
+                                <th class="px-3 py-3 border-b border-slate-200 text-right whitespace-nowrap">Trừ FOC</th>
+                                <th class="px-3 py-3 border-b border-slate-200 text-right whitespace-nowrap font-bold text-amber-600">Tổng Tiền</th>
+                                <th class="px-3 py-3 border-b border-slate-200 text-center whitespace-nowrap">Hóa Đơn</th>
+                            </tr>
+                        </thead>
+                        <tbody id="debt-detail-list" class="divide-y divide-slate-100 text-xs">
+                            <!-- Dynamic Content -->
+                        </tbody>
+                        <tfoot class="bg-slate-50/80 font-bold text-slate-900 border-t-2 border-slate-200">
+                            <tr>
+                                <td colspan="3" class="px-3 py-3 text-right">TỔNG CỘNG:</td>
+                                <td class="px-3 py-3 text-center" id="debt-detail-total-pax">0</td>
+                                <td colspan="4" class="px-3 py-3"></td>
+                                <td class="px-3 py-3 text-right text-amber-600 text-base whitespace-nowrap" id="debt-detail-total-amount">0 đ</td>
+                                <td class="px-3 py-3 text-center whitespace-nowrap" id="debt-detail-total-invoices">0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <!-- Modal: Add/Edit Booking -->
@@ -270,58 +362,84 @@
                         <label class="text-sm font-semibold text-slate-700">Đại lý / Công ty <span class="text-rose-500">*</span></label>
                         <select id="form-agency" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all">
                             <option value="">-- Chọn đại lý --</option>
-                            <option value="EXO Travel">EXO Travel</option>
+                            <option value="EXO Tissimo">EXO Tissimo</option>
+                            <option value="Aurora">Aurora</option>
                             <option value="Discova">Discova</option>
-                            <option value="Aurora Travel">Aurora Travel</option>
-                            <option value="Wideeydes Tour">Wideeydes Tour</option>
-                            <option value="Khách lẻ">Khách lẻ / Trực tiếp</option>
+                            <option value="Wideeydes">Wideeydes</option>
+                            <option value="Terra Indochina">Terra Indochina</option>
                             <option value="Khác">Khác...</option>
                         </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-semibold text-slate-700">Mã Booking / Code</label>
+                        <input type="text" id="form-code" placeholder="VD: SGUK438856" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all">
                     </div>
                     <div class="space-y-2">
                         <label class="text-sm font-semibold text-slate-700">Ngày đến <span class="text-rose-500">*</span></label>
                         <input type="date" id="form-date" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all">
                     </div>
                     <div class="space-y-2">
-                        <label class="text-sm font-semibold text-slate-700">Tên Khách / Tên Tour <span class="text-rose-500">*</span></label>
-                        <input type="text" id="form-guest" required placeholder="VD: Mr. Smith / Tour Hà Nội - Ninh Bình" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all">
+                        <label class="text-sm font-semibold text-slate-700">Người điều hành</label>
+                        <input type="text" id="form-operator" placeholder="Tên điều hành" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all">
                     </div>
                     <div class="space-y-2">
-                        <label class="text-sm font-semibold text-slate-700">Giá trị đơn hàng (VNĐ)</label>
-                        <input type="number" id="form-amount" placeholder="VD: 5000000" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all">
+                        <label class="text-sm font-semibold text-slate-700">Tên Khách / Tour <span class="text-rose-500">*</span></label>
+                        <input type="text" id="form-guest" required placeholder="Tên khách hoặc tên đoàn" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all">
                     </div>
-                    <div class="space-y-2 md:col-span-2">
+                    <div class="space-y-2">
+                        <label class="text-sm font-semibold text-slate-700">Số hóa đơn (VAT)</label>
+                        <input type="text" id="form-invoice" placeholder="Số hóa đơn (nếu có)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all">
+                    </div>
+                    
+                    <div class="md:col-span-2 bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-4">
+                        <h4 class="text-sm font-bold text-slate-700 border-b border-slate-200 pb-2">Chi tiết dịch vụ & Thanh toán</h4>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div class="space-y-2">
-                                <label class="text-sm font-semibold text-slate-700">Người lớn (Pax) <span class="text-rose-500">*</span></label>
-                                <input type="number" id="form-pax" required min="1" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all">
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-bold uppercase text-slate-400">Pax (Người lớn)</label>
+                                <input type="number" id="form-pax" value="1" oninput="calculateTotalForm()" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none transition-all focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
                             </div>
-                            <div class="space-y-2">
-                                <label class="text-sm font-semibold text-slate-700">Trẻ em</label>
-                                <input type="number" id="form-child" min="0" value="0" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all">
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-bold uppercase text-slate-400">Đơn giá Pax</label>
+                                <input type="number" id="form-price" value="0" oninput="calculateTotalForm()" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none transition-all focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
                             </div>
-                            <div class="space-y-2">
-                                <label class="text-sm font-semibold text-slate-700">Loại Dịch vụ</label>
-                                <select id="form-service" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all">
-                                    <option value="Set Menu">Set Menu</option>
-                                    <option value="A La Carte">A La Carte</option>
-                                    <option value="Buffet">Buffet</option>
-                                    <option value="Khác">Khác</option>
-                                </select>
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-bold uppercase text-slate-400">Xe đạp (SL)</label>
+                                <input type="number" id="form-bike-sl" value="0" oninput="calculateTotalForm()" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none transition-all focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
                             </div>
-                            <div class="space-y-2">
-                                <label class="text-sm font-semibold text-slate-700">Trạng thái</label>
-                                <select id="form-status" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all">
-                                    <option value="confirmed">Xác nhận</option>
-                                    <option value="pending">Chờ xử lý</option>
-                                    <option value="cancelled">Đã hủy</option>
-                                </select>
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-bold uppercase text-slate-400">Đơn giá Xe đạp</label>
+                                <input type="number" id="form-bike-price" value="100000" oninput="calculateTotalForm()" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none transition-all focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-bold uppercase text-slate-400">Nước (SL)</label>
+                                <input type="number" id="form-water-sl" value="0" oninput="calculateTotalForm()" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none transition-all focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-bold uppercase text-slate-400">Đơn giá Nước</label>
+                                <input type="number" id="form-water-price" value="10000" oninput="calculateTotalForm()" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none transition-all focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-bold uppercase text-rose-500">Trừ FOC</label>
+                                <input type="number" id="form-foc" value="0" oninput="calculateTotalForm()" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none transition-all focus:ring-2 focus:rose-500/20 focus:border-rose-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-bold uppercase text-emerald-600">Tổng cộng (VNĐ)</label>
+                                <input type="text" id="form-total-display" value="0" readonly class="w-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold rounded-lg px-3 py-2 outline-none">
                             </div>
                         </div>
                     </div>
+                    <div class="space-y-2">
+                        <label class="text-sm font-semibold text-slate-700">Trạng thái</label>
+                        <select id="form-status" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none">
+                            <option value="confirmed">Đã xác nhận</option>
+                            <option value="pending">Chờ xử lý</option>
+                            <option value="invoiced">Đã xuất VAT</option>
+                            <option value="cancelled">Đã hủy</option>
+                        </select>
+                    </div>
                     <div class="space-y-2 md:col-span-2">
-                        <label class="text-sm font-semibold text-slate-700">Ghi chú đặc biệt</label>
-                        <textarea id="form-note" rows="3" placeholder="Yêu cầu ăn kiêng, giờ đến chính xác, v.v..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"></textarea>
+                        <label class="text-sm font-semibold text-slate-700">Ghi chú</label>
+                        <textarea id="form-note" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none"></textarea>
                     </div>
                 </div>
                 <div class="mt-8 flex gap-4">
