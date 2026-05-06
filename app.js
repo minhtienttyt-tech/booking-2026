@@ -298,18 +298,9 @@ function calculateTotalForm() {
     const bike_price = parseInt(document.getElementById('form-bike-price').value) || 0;
     const water_sl = parseInt(document.getElementById('form-water-sl').value) || 0;
     const water_price = parseInt(document.getElementById('form-water-price').value) || 0;
-    const focInput = document.getElementById('form-foc').value.trim();
-    let focVal = parseInt(focInput.replace(/,/g, '')) || 0;
     
-    // Nếu nhập số nhỏ < 100, ngầm hiểu là số lượng khách FOC -> Quy ra tiền
-    let focAmount = 0;
-    if (focVal > 0 && focVal < 100) {
-        focAmount = focVal * price;
-    } else {
-        focAmount = focVal; // Nhập số lớn (VD: 250000) thì trừ thẳng
-    }
-    
-    const total = (pax * price) + (bike_sl * bike_price) + (water_sl * water_price) - focAmount;
+    // FOC chỉ để ghi chú, không trừ vào tổng tiền
+    const total = (pax * price) + (bike_sl * bike_price) + (water_sl * water_price);
     document.getElementById('form-total-display').value = new Intl.NumberFormat('vi-VN').format(total);
 }
 
@@ -343,17 +334,10 @@ function handleFormSubmit(e) {
     const bike_price = parseInt(document.getElementById('form-bike-price').value) || 0;
     const water_sl = parseInt(document.getElementById('form-water-sl').value) || 0;
     const water_price = parseInt(document.getElementById('form-water-price').value) || 0;
-    
     const focInput = document.getElementById('form-foc').value.trim();
-    let focVal = parseInt(focInput.replace(/,/g, '')) || 0;
-    let focAmount = 0;
-    if (focVal > 0 && focVal < 100) {
-        focAmount = focVal * price;
-    } else {
-        focAmount = focVal;
-    }
     
-    const calculatedAmount = (pax * price) + (bike_sl * bike_price) + (water_sl * water_price) - focAmount;
+    // Tổng tiền không trừ FOC
+    const calculatedAmount = (pax * price) + (bike_sl * bike_price) + (water_sl * water_price);
 
     const newBooking = {
         id: id ? parseInt(id) : Date.now(),
@@ -369,7 +353,7 @@ function handleFormSubmit(e) {
         bike_price: bike_price,
         water_sl: water_sl,
         water_price: water_price,
-        foc: focAmount, // Store the calculated FOC amount
+        foc: focInput, // Lưu nguyên chuỗi text FOC
         amount: calculatedAmount,
         status: document.getElementById('form-status').value,
         note: document.getElementById('form-note').value
@@ -1075,6 +1059,7 @@ async function syncBackToSheets() {
         sheetName: b.agency,
         code: b.code,
         date: b.date,
+        operator: b.operator,
         invoice: b.invoice
     }));
 
@@ -1092,16 +1077,24 @@ async function syncBackToSheets() {
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-QEyUxfMPBpqx7f55juKrvQH28iACZ8VdJ_b_0VP1dinlVNbUc4oP9EEGq2P0Evs/exec";
 
     try {
+        console.log("Sending Payload:", JSON.stringify({ updates }));
         const res = await fetch(APPS_SCRIPT_URL, {
             method: 'POST',
             body: JSON.stringify({ updates: updates })
-            // Không set Content-Type để tránh lỗi CORS Preflight
         });
         
         const result = await res.json();
+        console.log("Response from Apps Script:", result);
         
         if (result.status === "success") {
-            showToast(`Tuyệt vời! Đã cập nhật thành công ${result.updated} dòng vào Google Sheets.`, 'check-circle-2');
+            if (result.updated > 0) {
+                showToast(`Tuyệt vời! Đã cập nhật thành công ${result.updated} dòng vào Google Sheets.`, 'check-circle-2');
+            } else {
+                showToast(`Không tìm thấy dòng nào khớp để đồng bộ. Vui lòng kiểm tra lại Mã Code.`, 'alert-circle');
+                if (result.errors && result.errors.length > 0) {
+                    console.error("Sync Errors:", result.errors);
+                }
+            }
         } else {
             console.error('Apps Script Error:', result);
             showToast('Lỗi từ Google: ' + (result.message || 'Không xác định'), 'x');
