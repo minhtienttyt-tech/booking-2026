@@ -298,9 +298,18 @@ function calculateTotalForm() {
     const bike_price = parseInt(document.getElementById('form-bike-price').value) || 0;
     const water_sl = parseInt(document.getElementById('form-water-sl').value) || 0;
     const water_price = parseInt(document.getElementById('form-water-price').value) || 0;
-    const foc = parseInt(document.getElementById('form-foc').value) || 0;
+    const focInput = document.getElementById('form-foc').value.trim();
+    let focVal = parseInt(focInput.replace(/,/g, '')) || 0;
     
-    const total = (pax * price) + (bike_sl * bike_price) + (water_sl * water_price) - foc;
+    // Nếu nhập số nhỏ < 100, ngầm hiểu là số lượng khách FOC -> Quy ra tiền
+    let focAmount = 0;
+    if (focVal > 0 && focVal < 100) {
+        focAmount = focVal * price;
+    } else {
+        focAmount = focVal; // Nhập số lớn (VD: 250000) thì trừ thẳng
+    }
+    
+    const total = (pax * price) + (bike_sl * bike_price) + (water_sl * water_price) - focAmount;
     document.getElementById('form-total-display').value = new Intl.NumberFormat('vi-VN').format(total);
 }
 
@@ -334,10 +343,17 @@ function handleFormSubmit(e) {
     const bike_price = parseInt(document.getElementById('form-bike-price').value) || 0;
     const water_sl = parseInt(document.getElementById('form-water-sl').value) || 0;
     const water_price = parseInt(document.getElementById('form-water-price').value) || 0;
-    const foc = parseInt(document.getElementById('form-foc').value) || 0;
     
-    // Calculate total amount: (Pax * Price) + (Bike * BikePrice) + (Water * WaterPrice) - FOC
-    const calculatedAmount = (pax * price) + (bike_sl * bike_price) + (water_sl * water_price) - foc;
+    const focInput = document.getElementById('form-foc').value.trim();
+    let focVal = parseInt(focInput.replace(/,/g, '')) || 0;
+    let focAmount = 0;
+    if (focVal > 0 && focVal < 100) {
+        focAmount = focVal * price;
+    } else {
+        focAmount = focVal;
+    }
+    
+    const calculatedAmount = (pax * price) + (bike_sl * bike_price) + (water_sl * water_price) - focAmount;
 
     const newBooking = {
         id: id ? parseInt(id) : Date.now(),
@@ -353,7 +369,7 @@ function handleFormSubmit(e) {
         bike_price: bike_price,
         water_sl: water_sl,
         water_price: water_price,
-        foc: foc,
+        foc: focAmount, // Store the calculated FOC amount
         amount: calculatedAmount,
         status: document.getElementById('form-status').value,
         note: document.getElementById('form-note').value
