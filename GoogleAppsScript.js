@@ -181,7 +181,73 @@ function handleLegacyBatchUpdate(updates) {
   })).setMimeType(ContentService.MimeType.JSON);
 }
 
-// Hàm DoGet để Test API đang chạy
+// Hàm DoGet trả về toàn bộ dữ liệu (Thay thế cơ chế đọc CSV cũ)
 function doGet(e) {
-  return ContentService.createTextOutput("API Booking 2026 đang hoạt động!").setMimeType(ContentService.MimeType.TEXT);
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, GET, OPTIONS"
+  };
+  
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheets = ss.getSheets();
+    let allBookings = [];
+    
+    for (let i = 0; i < sheets.length; i++) {
+        const sheet = sheets[i];
+        const sheetName = sheet.getName();
+        
+        // Bỏ qua các sheet không phải là dữ liệu (như Tổng Hợp, Data...) hoặc bị ẩn
+        if (sheet.isSheetHidden() || sheetName.toLowerCase().includes("tổng hợp")) continue;
+        
+        const values = sheet.getDataRange().getValues();
+        // Dữ liệu bắt đầu từ dòng 5 (index 4)
+        for (let r = 4; r < values.length; r++) {
+            const dateStr = values[r][0];
+            const code = values[r][3];
+            
+            // Bỏ qua dòng trống
+            if (!dateStr || dateStr.toString().trim() === '' || dateStr === 'Ngày') continue;
+            
+            allBookings.push({
+                id: Date.now() + Math.floor(Math.random() * 1000000) + r,
+                date: formatDateForApp(dateStr),
+                agency: sheetName,
+                code: code ? code.toString().trim() : '',
+                operator: values[r][1] ? values[r][1].toString() : '',
+                pax: parseInt(values[r][4]) || 0,
+                price: parseInt(values[r][5]) || 0,
+                bike_sl: parseInt(values[r][7]) || 0,
+                bike_price: parseInt(values[r][8]) || 100000,
+                water_sl: parseInt(values[r][10]) || 0,
+                water_price: parseInt(values[r][11]) || 10000,
+                amount: parseInt(values[r][13]) || 0,
+                invoice: values[r][14] ? values[r][14].toString() : '',
+                guest: values[r][15] ? values[r][15].toString() : 'Khách đoàn',
+                foc: parseInt(values[r][16]) || 0,
+                status: (values[r][14] && values[r][14].toString().trim() !== '') ? 'invoiced' : 'confirmed',
+                note: 'Đồng bộ từ Google Sheets'
+            });
+        }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({ status: "success", data: allBookings })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function formatDateForApp(dateObj) {
+  if (dateObj instanceof Date) {
+     const y = dateObj.getFullYear();
+     const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+     const d = String(dateObj.getDate()).padStart(2, '0');
+     return `${y}-${m}-${d}`;
+  }
+  
+  if (typeof dateObj === 'string' && dateObj.includes('/')) {
+      const parts = dateObj.split('/');
+      if(parts.length === 3) return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+  }
+  return dateObj ? dateObj.toString() : '';
 }

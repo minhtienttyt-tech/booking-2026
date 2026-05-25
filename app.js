@@ -584,120 +584,35 @@ async function syncSingleBookingToSheet(action, booking) {
 }
 
 async function syncGoogleSheets() {
-    showToast('Đang quét và tải dữ liệu từ các sheet... Vui lòng đợi!', 'refresh-cw');
+    showToast('Đang kéo dữ liệu từ Google Sheets... Vui lòng đợi!', 'refresh-cw');
     
     const syncBtn = document.querySelector('button[onclick="syncGoogleSheets()"]');
     if (syncBtn) syncBtn.disabled = true;
-    
-    const SHEET_ID = '1ck7dyliLdDdhcmRiuwgo-ahUx1JtIhApYR_uArXwTVk';
-    const SHEETS_TO_SYNC = {
-        "EXO": "1737030180", "Aurora": "633018456", "Wideeydes": "1646090732",
-        "Discova": "950090025", "Terra Indochina": "1836936009", "Vido tour": "1025372703",
-        "Sen rừng": "1906466879", "Asia Exotica": "1094221168", "Avex Travel": "340619046",
-        "Smile Travel": "1262719362", "Du lịch hồ gươm": "264948914", "Topas Travel": "590165919",
-        "Asia Golf Trail": "654006445", "Saffrontravel": "169165853", "Indochina Travelland": "351205723",
-        "Indochina Voyages": "87292317", "Vietnam Decouveter": "265493846", "Fantasea": "1342934234",
-        "Threeland": "110451216", "4seasons Travel": "873149458", "Image Travel": "849443001",
-        "Lily Travel (New)": "677915366", "EsyWays Travel ( New)": "519769478", "Asiatica Travel": "80709107",
-        "Vietnamtourism": "1678726686", "Asam Travel (New)": "513845518", "Go Beyond": "759587261",
-        "Asia Pacific Travel": "53955210", "ITS (NEW)": "1773904843", "Joy Mark": "158224769",
-        "Desk Air": "1310105186", "Fine Asian Escapes": "313388583", "Vivu Travel (New)": "237711165",
-        "Absolute Asia Travel": "2125010795", "Victoria Tour": "85652038", "G Plus": "1163648113",
-        "Asia Pioneer": "1587350529", "Asean Link Travel": "190143606", "iLotus": "383860712",
-        "Tiên phong Á Châu": "993483268", "FTrip Travel": "1275850616", "Glamour Adventures": "288361656",
-        "Jacky Travel": "910519609", "Eviva Travel": "190428605", "New Orient Tour": "1466699628",
-        "Vietnam Travel & Cruise": "126035614", "Tonkin Travel": "1753992483", "Hanoi Voyages": "1986248705",
-        "Anasia Travel": "253150383", "Vietnam Travel Mart": "1085026967", "Anasia Link": "1910986182"
-    };
-
-    let newBookings = [];
-    const entries = Object.entries(SHEETS_TO_SYNC);
-    const batchSize = 5; 
-    let successCount = 0;
 
     try {
-        for (let i = 0; i < entries.length; i += batchSize) {
-            const batch = entries.slice(i, i + batchSize);
-            await Promise.all(batch.map(async ([sheetName, gid]) => {
-                const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
-                try {
-                    const res = await fetch(CSV_URL);
-                    if (!res.ok) return;
-                    const csvData = await res.text();
-                    
-                    const lines = csvData.split('\n');
-                    
-                    for (let j = 4; j < lines.length; j++) {
-                        if (!lines[j] || lines[j].trim() === '') continue;
-                        
-                        const cols = lines[j].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
-                        if (cols.length < 5 || !cols[0]) continue; 
-
-                        const dateStr = cols[0];
-                        const operator = cols[1];
-                        const agency = cols[2];
-                        const code = cols[3];
-                        const pax = parseInt(cols[4]) || 0;
-                        const price = parseInt(cols[5]?.replace(/[^0-9]/g, '')) || 0;
-                        const bike = parseInt(cols[7]) || 0;
-                        const bikePrice = parseInt(cols[8]?.replace(/[^0-9]/g, '')) || 100000;
-                        const water = parseInt(cols[10]) || 0;
-                        const waterPrice = parseInt(cols[11]?.replace(/[^0-9]/g, '')) || 10000;
-                        const foc = parseInt(cols[16]?.replace(/[^0-9]/g, '')) || 0;
-                        const invoice = cols[14];
-                        const note = cols[15];
-
-                        if (!dateStr || dateStr === 'Ngày' || dateStr === '""') continue;
-
-                        newBookings.push({
-                            id: Date.now() + Math.floor(Math.random() * 1000000),
-                            date: formatDateForApp(dateStr),
-                            agency: agency || sheetName,
-                            code: code || '',
-                            operator: operator || '',
-                            guest: note || 'Khách đoàn',
-                            pax: pax,
-                            price: price,
-                            bike_sl: bike,
-                            bike_price: bikePrice,
-                            water_sl: water,
-                            water_price: waterPrice,
-                            foc: foc,
-                            invoice: invoice || '',
-                            amount: (pax * price) + (bike * bikePrice) + (water * waterPrice) - foc,
-                            status: (invoice && invoice.trim() !== '') ? 'invoiced' : 'confirmed',
-                            note: 'Đồng bộ từ Google Sheets'
-                        });
-                    }
-                    successCount++;
-                } catch (e) {
-                    console.error("Lỗi khi tải sheet:", sheetName, e);
-                }
-            }));
-            
-            showToast(`Đang tải... (${Math.min(i + batchSize, entries.length)}/${entries.length} trang)`, 'refresh-cw');
-        }
-
-        if (syncBtn) syncBtn.disabled = false;
-
-        if (newBookings.length > 0) {
-            if (confirm(`Tìm thấy tổng cộng ${newBookings.length} booking. Ghi đè dữ liệu hiện tại?`)) {
-                bookings = newBookings;
-                saveData();
-                renderDashboard();
-                renderTable();
+        const res = await fetch(APPS_SCRIPT_URL);
+        const result = await res.json();
+        
+        if (result.status === 'success') {
+            bookings = result.data;
+            saveData();
+            renderDashboard();
+            renderTable();
+            if (typeof renderDebtMonthFilter === 'function') {
                 renderDebtMonthFilter();
                 renderDebtReport();
-                showToast(`Đã đồng bộ ${newBookings.length} booking thành công!`, 'check');
             }
+            populateAgencyFilter();
+            showToast(`Đã đồng bộ ${bookings.length} booking thành công!`, 'check');
         } else {
-            showToast('Không tìm thấy dữ liệu hợp lệ trên các sheet', 'x');
+            showToast('Lỗi từ Google: ' + result.message, 'x');
         }
-
     } catch (error) {
         console.error('Sync Error:', error);
-        if (syncBtn) syncBtn.disabled = false;
         showToast('Lỗi đồng bộ. Hãy chắc chắn máy tính có kết nối mạng!', 'x');
+    } finally {
+        if (syncBtn) syncBtn.disabled = false;
+        lucide.createIcons();
     }
 }
 
