@@ -359,9 +359,11 @@ function handleFormSubmit(e) {
         note: document.getElementById('form-note').value
     };
     
+    let actionType = 'CREATE';
     if (id) {
         const index = bookings.findIndex(b => b.id === parseInt(id));
         bookings[index] = newBooking;
+        actionType = 'UPDATE';
         showToast('Đã cập nhật booking!', 'check');
     } else {
         bookings.push(newBooking);
@@ -373,6 +375,9 @@ function handleFormSubmit(e) {
     renderDashboard();
     renderTable();
     populateAgencyFilter();
+    
+    // Auto sync 2-way
+    syncSingleBookingToSheet(actionType, newBooking);
 }
 
 function editBooking(id) {
@@ -416,11 +421,17 @@ function editBooking(id) {
 
 function deleteBooking(id) {
     if (confirm('Bạn có chắc chắn muốn xóa booking này không?')) {
+        const bookingToDelete = bookings.find(b => b.id === id);
         bookings = bookings.filter(b => b.id !== id);
         saveData();
         renderDashboard();
         renderTable();
         showToast('Đã xóa booking', 'trash-2');
+        
+        // Auto sync 2-way
+        if (bookingToDelete) {
+            syncSingleBookingToSheet('DELETE', bookingToDelete);
+        }
     }
 }
 
@@ -547,7 +558,31 @@ function exportPDF() {
     
     doc.save(`Booking_Report_2026.pdf`);
 }
-// --- Google Sheets Synchronization ---
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyt8WzKKNguWBO1dsruYehMbTHhQQMgkElUuu3dHr6fORQjs34IrBOk8BUpXc7YZA/exec";
+
+async function syncSingleBookingToSheet(action, booking) {
+    if (!booking.agency) return; 
+    try {
+        showToast(`Đang đồng bộ ${action === 'CREATE' ? 'thêm mới' : action === 'UPDATE' ? 'cập nhật' : 'xóa'} lên Google Sheets...`, 'refresh-cw');
+        const payload = { action: action, data: booking };
+        const res = await fetch(APPS_SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        });
+        const result = await res.json();
+        if (result.status === "success") {
+            showToast(result.message || 'Đồng bộ thành công!', 'check-circle-2');
+        } else {
+            console.error("Sync Error:", result);
+            showToast('Lỗi đồng bộ: ' + result.message, 'alert-circle');
+        }
+    } catch (error) {
+        console.error('Sync Exception:', error);
+        showToast('Lỗi mạng! Không thể đồng bộ lên Google Sheets.', 'x');
+    }
+}
+
 async function syncGoogleSheets() {
     showToast('Đang quét và tải dữ liệu từ các sheet... Vui lòng đợi!', 'refresh-cw');
     
@@ -1073,8 +1108,7 @@ async function syncBackToSheets() {
     const syncBtn = document.querySelector('button[onclick="syncBackToSheets()"]');
     if(syncBtn) syncBtn.disabled = true;
 
-    // URL Web App của Google Apps Script
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-QEyUxfMPBpqx7f55juKrvQH28iACZ8VdJ_b_0VP1dinlVNbUc4oP9EEGq2P0Evs/exec";
+    // Đã chuyển APPS_SCRIPT_URL lên đầu phần Sync
 
     try {
         console.log("Sending Payload:", JSON.stringify({ updates }));
