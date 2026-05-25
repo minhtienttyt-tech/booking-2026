@@ -593,7 +593,6 @@ async function syncGoogleSheets() {
     let SHEETS_TO_SYNC = {};
 
     try {
-        // 1. Fetch danh sách sheets từ API (Rất nhanh vì chỉ lấy tên sheet, không đọc dữ liệu)
         const mapRes = await fetch(APPS_SCRIPT_URL);
         const mapData = await mapRes.json();
         
@@ -605,7 +604,6 @@ async function syncGoogleSheets() {
         }
     } catch(err) {
         console.error('Lỗi API lấy danh sách sheet:', err);
-        // Danh sách tĩnh (Backup) nếu API bị lỗi
         SHEETS_TO_SYNC = {
             "EXO": "1737030180", "Aurora": "633018456", "Wideeydes": "1646090732",
             "Discova": "950090025", "Terra Indochina": "1836936009", "Vido tour": "1025372703",
@@ -631,7 +629,7 @@ async function syncGoogleSheets() {
 
     let newBookings = [];
     const entries = Object.entries(SHEETS_TO_SYNC);
-    const batchSize = 10; // Tăng batch size vì CSV tải rất nhanh
+    const batchSize = 10; 
     let successCount = 0;
 
     try {
@@ -646,13 +644,17 @@ async function syncGoogleSheets() {
                     
                     const lines = csvData.split('\n');
                     
-                    for (let j = 4; j < lines.length; j++) {
+                    // Bắt đầu đọc từ dòng 1 thay vì 4, và kiểm tra tính hợp lệ của ngày
+                    for (let j = 1; j < lines.length; j++) {
                         if (!lines[j] || lines[j].trim() === '') continue;
                         
                         const cols = lines[j].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
                         if (cols.length < 5 || !cols[0]) continue; 
 
                         const dateStr = cols[0];
+                        // Bỏ qua các dòng tiêu đề hoặc không chứa số ngày tháng hợp lệ
+                        if (!dateStr || dateStr.toLowerCase().includes('ngày') || dateStr === '""' || !dateStr.match(/\d/)) continue;
+
                         const operator = cols[1];
                         const agency = cols[2];
                         const code = cols[3];
@@ -665,8 +667,6 @@ async function syncGoogleSheets() {
                         const foc = parseInt(cols[16]?.replace(/[^0-9]/g, '')) || 0;
                         const invoice = cols[14];
                         const note = cols[15];
-
-                        if (!dateStr || dateStr === 'Ngày' || dateStr === '""') continue;
 
                         newBookings.push({
                             id: Date.now() + Math.floor(Math.random() * 1000000),
