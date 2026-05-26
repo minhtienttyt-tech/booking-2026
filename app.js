@@ -100,28 +100,48 @@ function logout() {
 
 // --- Navigation ---
 function navigate(view) {
-    currentView = view;
+    // Hide all pages
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.add('hidden');
+        page.classList.remove('active');
+    });
     
-    // Update Nav UI
-    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-    document.getElementById(`nav-${view}`).classList.add('active');
+    // Show selected page
+    const target = document.getElementById(`${view}-view`);
+    if(target) {
+        target.classList.remove('hidden');
+        setTimeout(() => target.classList.add('active'), 10);
+    }
     
-    // Update Page UI
-    document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
-    document.getElementById(`page-${view}`).classList.remove('hidden');
+    // Update active nav state
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
     
-    // Update Header
+    const activeNav = document.querySelector(`.nav-item[onclick="navigate('${view}')"]`);
+    if (activeNav) activeNav.classList.add('active');
+    
+    // Update headers based on view
     const titles = {
-        'dashboard': { main: 'Tổng quan', sub: 'Chào mừng bạn trở lại, Admin' },
-        'bookings': { main: 'Danh sách đặt lịch', sub: 'Quản lý và cập nhật các booking' },
-        'calendar': { main: 'Lịch trình', sub: 'Theo dõi dòng chảy booking theo thời gian' },
-        'reports': { main: 'Báo cáo', sub: 'Phân tích hiệu suất kinh doanh' },
-        'debt': { main: 'Công nợ', sub: 'Chi tiết công nợ theo tháng của từng đối tác' }
+        'dashboard': { title: 'Tổng quan', subtitle: 'Chào mừng bạn trở lại, Admin' },
+        'bookings': { title: 'Quản lý đặt lịch', subtitle: 'Danh sách và trạng thái booking' },
+        'calendar': { title: 'Lịch trình', subtitle: 'Xem chi tiết theo ngày' },
+        'reports': { title: 'Báo cáo & Thống kê', subtitle: 'Phân tích doanh thu và hiệu suất' },
+        'debt': { title: 'Công nợ theo tháng', subtitle: 'Quản lý công nợ khách hàng' }
     };
     
-    document.getElementById('page-title').innerText = titles[view].main;
-    document.getElementById('page-subtitle').innerText = titles[view].sub;
-
+    if (titles[view]) {
+        document.getElementById('page-title').innerText = titles[view].title;
+        document.getElementById('page-subtitle').innerText = titles[view].subtitle;
+    }
+    
+    // Auto-close menu on mobile if it's open
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar && sidebar.classList.contains('open')) {
+        toggleMenu();
+    }
+    
+    currentView = view;
     if (view === 'dashboard') renderDashboard();
     if (view === 'bookings') renderTable();
     if (view === 'debt') {
@@ -626,6 +646,11 @@ async function syncGoogleSheets() {
         };
         showToast('Sử dụng danh sách đại lý dự phòng...', 'alert-circle');
     }
+    
+    // Loại bỏ các sheet tổng hợp để không bị trùng lặp dữ liệu
+    delete SHEETS_TO_SYNC['DS KH'];
+    delete SHEETS_TO_SYNC['TH booking theo ngày'];
+    delete SHEETS_TO_SYNC['Công nợ theo tháng'];
 
     let newBookings = [];
     const entries = Object.entries(SHEETS_TO_SYNC);
@@ -1156,5 +1181,30 @@ async function syncBackToSheets() {
     } finally {
         if(syncBtn) syncBtn.disabled = false;
         lucide.createIcons();
+    }
+}
+
+function toggleMenu() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    
+    if (!sidebar || !overlay) return;
+    
+    if (sidebar.classList.contains('left-0')) {
+        // Hide
+        sidebar.classList.remove('left-0');
+        sidebar.classList.add('-left-64');
+        overlay.classList.remove('opacity-100');
+        overlay.classList.add('opacity-0');
+        setTimeout(() => overlay.classList.add('hidden'), 300);
+    } else {
+        // Show
+        sidebar.classList.remove('-left-64');
+        sidebar.classList.add('left-0');
+        overlay.classList.remove('hidden');
+        setTimeout(() => {
+            overlay.classList.remove('opacity-0');
+            overlay.classList.add('opacity-100');
+        }, 10);
     }
 }

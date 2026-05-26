@@ -6,7 +6,7 @@
     <title>Booking Management 2026 - Nhà hàng Tam Cốc Memory</title>
     <link rel="stylesheet" href="style.css">
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="vendor/tailwind.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -25,24 +25,20 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="vendor/lucide.js"></script>
     <!-- SheetJS with Styles -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script src="vendor/xlsx.bundle.js"></script>
     <!-- jsPDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="vendor/jspdf.umd.min.js"></script>
+    <script src="vendor/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans">
 
-    <!-- Orientation Warning -->
-    <div id="orientation-warning" class="fixed inset-0 z-[9999] bg-slate-900 flex-col items-center justify-center text-white p-6 text-center hidden">
-        <i data-lucide="rotate-cw" class="w-16 h-16 mb-4 animate-spin text-amber-400"></i>
-        <h2 class="text-2xl font-bold mb-2">Vui lòng xoay ngang màn hình</h2>
-        <p class="text-slate-400">Ứng dụng hoạt động tốt nhất ở chế độ màn hình ngang trên thiết bị di động.</p>
-    </div>
+    <!-- Sidebar Overlay Backdrop -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden md:hidden transition-opacity duration-300 opacity-0" onclick="toggleMenu()"></div>
 
     <!-- Sidebar Navigation -->
-    <nav id="sidebar" class="sidebar fixed left-0 top-0 bottom-0 w-64 bg-slate-900 text-white z-50 transition-all duration-300">
+    <nav id="sidebar" class="sidebar fixed -left-64 md:left-0 top-0 bottom-0 w-64 bg-slate-900 text-white z-50 transition-all duration-300">
         <div class="p-6">
             <div class="flex items-center gap-3 mb-8">
                 <div class="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-900/20">
@@ -87,13 +83,18 @@
     </nav>
 
     <!-- Main Content Area -->
-    <main class="ml-64 p-8 min-h-screen">
+    <main class="main-content md:ml-64 p-4 md:p-8 min-h-screen pb-24 md:pb-8">
         
         <!-- Header -->
-        <header class="flex justify-between items-center mb-8">
-            <div>
-                <h2 id="page-title" class="text-3xl font-bold text-slate-900 tracking-tight">Tổng quan</h2>
-                <p id="page-subtitle" class="text-slate-500">Chào mừng bạn trở lại, Admin</p>
+        <header class="flex justify-between items-center mb-8 gap-4">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleMenu()" class="md:hidden p-2 -ml-2 text-slate-500 hover:text-slate-900 focus:outline-none focus:bg-slate-100 rounded-lg">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <div>
+                    <h2 id="page-title" class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Tổng quan</h2>
+                    <p id="page-subtitle" class="text-sm md:text-base text-slate-500">Chào mừng bạn trở lại, Admin</p>
+                </div>
             </div>
             <div class="flex items-center gap-4">
                 <div class="relative">

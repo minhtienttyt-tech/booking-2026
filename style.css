@@ -179,8 +179,24 @@ input:focus, select:focus, textarea:focus {
     .sidebar span, .sidebar p, .sidebar h1 {
         display: none;
     }
-    main {
+    .main-content {
         margin-left: 80px;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: 260px;
+    }
+    
+    .sidebar span, .sidebar p, .sidebar h1 {
+        display: block; /* Restore text visibility */
+    }
+
+    .main-content {
+        margin-left: 0 !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
     }
 }
 
