@@ -628,10 +628,13 @@ async function syncGoogleSheets() {
         showToast('Sử dụng danh sách đại lý dự phòng...', 'alert-circle');
     }
 
-    // Loại bỏ các sheet tổng hợp để không bị trùng lặp dữ liệu
-    delete SHEETS_TO_SYNC['DS KH'];
-    delete SHEETS_TO_SYNC['TH booking theo ngày'];
-    delete SHEETS_TO_SYNC['Công nợ theo tháng'];
+    // Loai bo cac sheet tong hop bang GID de tranh loi unicode
+    const summaryGids = ["428736774", "2145431161", "1423458328"];
+    for (const key in SHEETS_TO_SYNC) {
+        if (summaryGids.includes(SHEETS_TO_SYNC[key])) {
+            delete SHEETS_TO_SYNC[key];
+        }
+    }
 
     let newBookings = [];
     const entries = Object.entries(SHEETS_TO_SYNC);
