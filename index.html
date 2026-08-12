@@ -31,6 +31,8 @@
     <!-- jsPDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans">
 
@@ -262,13 +264,80 @@
         </div>
 
         <!-- Page: Reports -->
-        <div id="page-reports" class="page hidden text-center py-20">
-            <div class="max-w-md mx-auto">
-                <div class="w-20 h-20 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <i data-lucide="line-chart" class="w-10 h-10"></i>
+        <div id="page-reports" class="page hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <!-- Filter Section -->
+            <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">Dashboard Thống Kê</h2>
+                    <p class="text-sm text-slate-500 mt-1">Tổng quan doanh thu, công nợ và top khách hàng</p>
                 </div>
-                <h3 class="text-2xl font-bold mb-2">Thống kê chi tiết</h3>
-                <p class="text-slate-500">Hệ thống đang tổng hợp dữ liệu để cung cấp biểu đồ doanh thu và xu hướng booking.</p>
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex bg-slate-100 p-1 rounded-xl">
+                        <button id="btn-period-month" onclick="setReportPeriod('month')" class="px-4 py-1.5 text-sm font-semibold rounded-lg bg-white shadow-sm text-slate-800 transition-all">Tháng</button>
+                        <button id="btn-period-quarter" onclick="setReportPeriod('quarter')" class="px-4 py-1.5 text-sm font-semibold rounded-lg text-slate-500 hover:text-slate-800 transition-all">Quý</button>
+                        <button id="btn-period-year" onclick="setReportPeriod('year')" class="px-4 py-1.5 text-sm font-semibold rounded-lg text-slate-500 hover:text-slate-800 transition-all">Năm</button>
+                    </div>
+                    <select id="report-time-selector" onchange="renderReports()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 outline-none focus:border-amber-500 font-semibold text-slate-800 min-w-[150px]">
+                    </select>
+                </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-3xl p-6 text-white shadow-lg shadow-blue-500/20">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-blue-100 font-medium mb-1">Tổng số Booking</p>
+                            <h3 class="text-3xl font-bold" id="kpi-bookings">0</h3>
+                        </div>
+                        <div class="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+                            <i data-lucide="calendar-check" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-gradient-to-br from-amber-500 to-orange-500 rounded-3xl p-6 text-white shadow-lg shadow-amber-500/20">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-amber-100 font-medium mb-1">Tổng Khách (Pax)</p>
+                            <h3 class="text-3xl font-bold" id="kpi-pax">0</h3>
+                        </div>
+                        <div class="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+                            <i data-lucide="users" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-3xl p-6 text-white shadow-lg shadow-emerald-500/20">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-emerald-100 font-medium mb-1">Tổng Doanh thu / Công nợ</p>
+                            <h3 class="text-3xl font-bold" id="kpi-revenue">0 đ</h3>
+                        </div>
+                        <div class="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+                            <i data-lucide="banknote" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Area -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">Xu hướng Doanh Thu</h3>
+                    <div id="chart-revenue-trend" class="w-full h-[300px]"></div>
+                </div>
+                <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">Top 10 Đại lý (Doanh thu)</h3>
+                    <div id="chart-top-customers" class="w-full h-[300px]"></div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 gap-6 mb-6">
+                <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">Tỷ trọng Công nợ theo Đại lý</h3>
+                    <div id="chart-debt-agency" class="w-full h-[350px]"></div>
+                </div>
             </div>
         </div>
 

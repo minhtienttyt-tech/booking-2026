@@ -125,6 +125,9 @@ function navigate(view) {
 
     if (view === 'dashboard') renderDashboard();
     if (view === 'bookings') renderTable();
+    if (view === 'reports') {
+        if (typeof renderReports === 'function') renderReports();
+    }
     if (view === 'debt') {
         renderDebtMonthFilter();
         renderDebtReport();
@@ -1166,4 +1169,253 @@ async function syncBackToSheets() {
         if(syncBtn) syncBtn.disabled = false;
         lucide.createIcons();
     }
+}
+// --- Dashboard Reports Logic ---
+let reportPeriod = 'month';
+let selectedReportTime = '';
+
+function setReportPeriod(period) {
+    reportPeriod = period;
+    document.querySelectorAll('#btn-period-month, #btn-period-quarter, #btn-period-year').forEach(btn => {
+        btn.classList.remove('bg-white', 'shadow-sm', 'text-slate-800');
+        btn.classList.add('text-slate-500');
+    });
+    const activeBtn = document.getElementById(`btn-period-${period}`);
+    if (activeBtn) {
+        activeBtn.classList.remove('text-slate-500');
+        activeBtn.classList.add('bg-white', 'shadow-sm', 'text-slate-800');
+    }
+    
+    // Set default selected time
+    const allMonths = [...new Set(bookings.filter(b => b.date).map(b => b.date.substring(3, 10)))].sort((a, b) => {
+        const [mA, yA] = a.split('/');
+        const [mB, yB] = b.split('/');
+        return (yB - yA) || (mB - mA);
+    });
+    
+    if (allMonths.length > 0) {
+        if (period === 'month') {
+            selectedReportTime = allMonths[0];
+        } else if (period === 'quarter') {
+            const [m, y] = allMonths[0].split('/');
+            const q = Math.ceil(parseInt(m) / 3);
+            selectedReportTime = `Q${q}/${y}`;
+        } else if (period === 'year') {
+            selectedReportTime = allMonths[0].split('/')[1];
+        }
+    }
+    
+    renderReports();
+}
+
+function renderReports() {
+    const timeSelector = document.getElementById('report-time-selector');
+    if (!timeSelector) return;
+
+    // We can do this: if triggered by selector, it has a value.
+    const isChangeEvent = typeof event !== 'undefined' && event && event.target && event.target.id === 'report-time-selector';
+    if (isChangeEvent) {
+        selectedReportTime = timeSelector.value;
+    }
+
+    // 1. Prepare options for time selector
+    const allMonths = [...new Set(bookings.filter(b => b.date).map(b => b.date.substring(3, 10)))].sort((a, b) => {
+        const [mA, yA] = a.split('/');
+        const [mB, yB] = b.split('/');
+        return (yB - yA) || (mB - mA);
+    });
+
+    if (!selectedReportTime && allMonths.length > 0) {
+        selectedReportTime = allMonths[0];
+    }
+
+    let optionsHtml = '';
+    
+    if (reportPeriod === 'month') {
+        allMonths.forEach(m => {
+            optionsHtml += `<option value="${m}" ${selectedReportTime === m ? 'selected' : ''}>Tháng ${m}</option>`;
+        });
+    } else if (reportPeriod === 'quarter') {
+        const qSet = new Set();
+        allMonths.forEach(m => {
+            const [mm, yy] = m.split('/');
+            const q = Math.ceil(parseInt(mm) / 3);
+            qSet.add(`Q${q}/${yy}`);
+        });
+        Array.from(qSet).forEach(q => {
+            optionsHtml += `<option value="${q}" ${selectedReportTime === q ? 'selected' : ''}>Quý ${q.replace('Q', '')}</option>`;
+        });
+    } else if (reportPeriod === 'year') {
+        const ySet = new Set();
+        allMonths.forEach(m => {
+            ySet.add(m.split('/')[1]);
+        });
+        Array.from(ySet).forEach(y => {
+            optionsHtml += `<option value="${y}" ${selectedReportTime === y ? 'selected' : ''}>Năm ${y}</option>`;
+        });
+    }
+    timeSelector.innerHTML = optionsHtml;
+    
+    // Ensure selectedReportTime is valid if options changed
+    if (!timeSelector.value) {
+        if (timeSelector.options.length > 0) {
+            selectedReportTime = timeSelector.options[0].value;
+            timeSelector.value = selectedReportTime;
+        }
+    } else {
+        selectedReportTime = timeSelector.value;
+    }
+
+    // 2. Filter bookings based on selected period
+    let filteredBookings = bookings.filter(b => {
+        if (!b.date) return false;
+        const [dd, mm, yy] = b.date.split('/');
+        if (reportPeriod === 'month') {
+            return `${mm}/${yy}` === selectedReportTime;
+        } else if (reportPeriod === 'quarter') {
+            const q = Math.ceil(parseInt(mm) / 3);
+            return `Q${q}/${yy}` === selectedReportTime;
+        } else if (reportPeriod === 'year') {
+            return yy === selectedReportTime;
+        }
+        return false;
+    });
+
+    // 3. Aggregate Data
+    let totalBookings = filteredBookings.length;
+    let totalPax = 0;
+    let totalRevenue = 0;
+    
+    const agencyData = {};
+    const trendData = {};
+
+    filteredBookings.forEach(b => {
+        const pax = parseInt(b.pax) || 0;
+        const price = parseInt(b.price) || 0;
+        const ttPax = pax * price;
+        const bike = parseInt(b.bike_sl) || 0;
+        const bikePrice = parseInt(b.bike_price) || 0;
+        const ttBike = bike * bikePrice;
+        const water = parseInt(b.water_sl) || 0;
+        const waterPrice = parseInt(b.water_price) || 0;
+        const ttWater = water * waterPrice;
+        const foc = parseInt(b.foc) || 0;
+        const total = (b.amount !== undefined) ? parseInt(b.amount) : (ttPax + ttBike + ttWater - foc);
+
+        totalPax += pax;
+        totalRevenue += total;
+
+        const agency = b.agency || 'Khác';
+        if (!agencyData[agency]) {
+            agencyData[agency] = { revenue: 0, count: 0 };
+        }
+        agencyData[agency].revenue += total;
+        agencyData[agency].count += 1;
+
+        // Group by Date for trend
+        let trendKey = b.date; // default is daily
+        if (reportPeriod === 'year') {
+            trendKey = b.date.substring(3, 10); // Group by month if year view
+        }
+        if (!trendData[trendKey]) {
+            trendData[trendKey] = 0;
+        }
+        trendData[trendKey] += total;
+    });
+
+    // 4. Update KPIs
+    document.getElementById('kpi-bookings').innerText = totalBookings;
+    document.getElementById('kpi-pax').innerText = totalPax;
+    document.getElementById('kpi-revenue').innerText = formatCurrency(totalRevenue);
+
+    // 5. Render ECharts
+    if (typeof echarts === 'undefined') return;
+
+    // A) Revenue Trend
+    const chartTrend = echarts.init(document.getElementById('chart-revenue-trend'));
+    const trendKeys = Object.keys(trendData).sort((a, b) => {
+        if (reportPeriod === 'year') {
+            // format mm/yyyy
+            const [ma, ya] = a.split('/');
+            const [mb, yb] = b.split('/');
+            return (ya - yb) || (ma - mb);
+        }
+        // format dd/mm/yyyy
+        const [da, ma, ya] = a.split('/');
+        const [db, mb, yb] = b.split('/');
+        return new Date(`${ya}-${ma}-${da}`) - new Date(`${yb}-${mb}-${db}`);
+    });
+    
+    chartTrend.setOption({
+        tooltip: { trigger: 'axis', formatter: (params) => `${params[0].name}<br/>Doanh thu: <b>${formatCurrency(params[0].value)}</b>` },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: { type: 'category', boundaryGap: false, data: trendKeys },
+        yAxis: { type: 'value', axisLabel: { formatter: (val) => (val / 1000000).toFixed(1) + 'M' } },
+        series: [{
+            name: 'Doanh Thu',
+            type: 'line',
+            smooth: true,
+            lineStyle: { width: 3, color: '#0ea5e9' },
+            areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: 'rgba(14, 165, 233, 0.4)' },
+                    { offset: 1, color: 'rgba(14, 165, 233, 0.05)' }
+                ])
+            },
+            data: trendKeys.map(k => trendData[k])
+        }]
+    });
+
+    // B) Top 10 Customers (Agencies)
+    const chartTop = echarts.init(document.getElementById('chart-top-customers'));
+    const topAgencies = Object.entries(agencyData)
+        .sort((a, b) => b[1].revenue - a[1].revenue)
+        .slice(0, 10)
+        .reverse(); // Reverse for horizontal bar chart (highest at top)
+
+    chartTop.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: (params) => `${params[0].name}<br/>Doanh thu: <b>${formatCurrency(params[0].value)}</b>` },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: { type: 'value', axisLabel: { formatter: (val) => (val / 1000000).toFixed(1) + 'M' } },
+        yAxis: { type: 'category', data: topAgencies.map(a => a[0]), axisLabel: { width: 100, overflow: 'truncate' } },
+        series: [{
+            name: 'Doanh Thu',
+            type: 'bar',
+            itemStyle: { color: '#f59e0b', borderRadius: [0, 4, 4, 0] },
+            data: topAgencies.map(a => a[1].revenue)
+        }]
+    });
+
+    // C) Debt / Revenue Share by Agency (Pie Chart)
+    const chartDebt = echarts.init(document.getElementById('chart-debt-agency'));
+    const pieData = Object.entries(agencyData)
+        .sort((a, b) => b[1].revenue - a[1].revenue)
+        .slice(0, 15) // Top 15 to avoid clutter
+        .map(a => ({ name: a[0], value: a[1].revenue }));
+
+    chartDebt.setOption({
+        tooltip: { trigger: 'item', formatter: (params) => `${params.name}<br/>Doanh thu: <b>${formatCurrency(params.value)}</b> (${params.percent}%)` },
+        legend: { type: 'scroll', orient: 'vertical', right: 10, top: 20, bottom: 20 },
+        series: [{
+            name: 'Đại lý',
+            type: 'pie',
+            radius: ['40%', '70%'],
+            center: ['40%', '50%'],
+            avoidLabelOverlap: false,
+            itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
+            label: { show: false, position: 'center' },
+            emphasis: {
+                label: { show: true, fontSize: '14', fontWeight: 'bold' }
+            },
+            labelLine: { show: false },
+            data: pieData
+        }]
+    });
+    
+    // Resize event listener to make charts responsive
+    window.addEventListener('resize', () => {
+        if(chartTrend) chartTrend.resize();
+        if(chartTop) chartTop.resize();
+        if(chartDebt) chartDebt.resize();
+    });
 }
