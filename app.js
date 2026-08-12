@@ -629,7 +629,7 @@ async function syncGoogleSheets() {
     }
 
     // Loai bo cac sheet tong hop bang GID de tranh loi unicode
-    const summaryGids = ["428736774", "2145431161", "1423458328"];
+    const summaryGids = ["428736774", "2145431161", "1423458328", "67477759"];
     for (const key in SHEETS_TO_SYNC) {
         if (summaryGids.includes(SHEETS_TO_SYNC[key])) {
             delete SHEETS_TO_SYNC[key];
