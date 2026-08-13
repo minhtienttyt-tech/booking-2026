@@ -1187,21 +1187,18 @@ function setReportPeriod(period) {
     }
     
     // Set default selected time
-    const allMonths = [...new Set(bookings.filter(b => b.date).map(b => b.date.substring(3, 10)))].sort((a, b) => {
-        const [mA, yA] = a.split('/');
-        const [mB, yB] = b.split('/');
-        return (yB - yA) || (mB - mA);
-    });
+    // b.date is YYYY-MM-DD
+    const allMonths = [...new Set(bookings.filter(b => b.date && b.date.length >= 7).map(b => b.date.substring(0, 7)))].sort().reverse();
     
     if (allMonths.length > 0) {
         if (period === 'month') {
             selectedReportTime = allMonths[0];
         } else if (period === 'quarter') {
-            const [m, y] = allMonths[0].split('/');
+            const [y, m] = allMonths[0].split('-');
             const q = Math.ceil(parseInt(m) / 3);
-            selectedReportTime = `Q${q}/${y}`;
+            selectedReportTime = `${y}-Q${q}`;
         } else if (period === 'year') {
-            selectedReportTime = allMonths[0].split('/')[1];
+            selectedReportTime = allMonths[0].substring(0, 4);
         }
     }
     
@@ -1212,18 +1209,13 @@ function renderReports() {
     const timeSelector = document.getElementById('report-time-selector');
     if (!timeSelector) return;
 
-    // We can do this: if triggered by selector, it has a value.
     const isChangeEvent = typeof event !== 'undefined' && event && event.target && event.target.id === 'report-time-selector';
     if (isChangeEvent) {
         selectedReportTime = timeSelector.value;
     }
 
     // 1. Prepare options for time selector
-    const allMonths = [...new Set(bookings.filter(b => b.date).map(b => b.date.substring(3, 10)))].sort((a, b) => {
-        const [mA, yA] = a.split('/');
-        const [mB, yB] = b.split('/');
-        return (yB - yA) || (mB - mA);
-    });
+    const allMonths = [...new Set(bookings.filter(b => b.date && b.date.length >= 7).map(b => b.date.substring(0, 7)))].sort().reverse();
 
     if (!selectedReportTime && allMonths.length > 0) {
         selectedReportTime = allMonths[0];
@@ -1232,23 +1224,25 @@ function renderReports() {
     let optionsHtml = '';
     
     if (reportPeriod === 'month') {
-        allMonths.forEach(m => {
-            optionsHtml += `<option value="${m}" ${selectedReportTime === m ? 'selected' : ''}>Tháng ${m}</option>`;
+        allMonths.forEach(m => { // m is YYYY-MM
+            const [yy, mm] = m.split('-');
+            optionsHtml += `<option value="${m}" ${selectedReportTime === m ? 'selected' : ''}>Tháng ${mm}/${yy}</option>`;
         });
     } else if (reportPeriod === 'quarter') {
         const qSet = new Set();
         allMonths.forEach(m => {
-            const [mm, yy] = m.split('/');
+            const [yy, mm] = m.split('-');
             const q = Math.ceil(parseInt(mm) / 3);
-            qSet.add(`Q${q}/${yy}`);
+            qSet.add(`${yy}-Q${q}`);
         });
-        Array.from(qSet).forEach(q => {
-            optionsHtml += `<option value="${q}" ${selectedReportTime === q ? 'selected' : ''}>Quý ${q.replace('Q', '')}</option>`;
+        Array.from(qSet).forEach(q => { // q is YYYY-Qx
+            const [yy, qq] = q.split('-');
+            optionsHtml += `<option value="${q}" ${selectedReportTime === q ? 'selected' : ''}>Quý ${qq.replace('Q', '')}/${yy}</option>`;
         });
     } else if (reportPeriod === 'year') {
         const ySet = new Set();
         allMonths.forEach(m => {
-            ySet.add(m.split('/')[1]);
+            ySet.add(m.substring(0, 4));
         });
         Array.from(ySet).forEach(y => {
             optionsHtml += `<option value="${y}" ${selectedReportTime === y ? 'selected' : ''}>Năm ${y}</option>`;
@@ -1268,13 +1262,14 @@ function renderReports() {
 
     // 2. Filter bookings based on selected period
     let filteredBookings = bookings.filter(b => {
-        if (!b.date) return false;
-        const [dd, mm, yy] = b.date.split('/');
+        if (!b.date || b.date.length < 10) return false;
+        const yy = b.date.substring(0, 4);
+        const mm = b.date.substring(5, 7);
         if (reportPeriod === 'month') {
-            return `${mm}/${yy}` === selectedReportTime;
+            return `${yy}-${mm}` === selectedReportTime;
         } else if (reportPeriod === 'quarter') {
             const q = Math.ceil(parseInt(mm) / 3);
-            return `Q${q}/${yy}` === selectedReportTime;
+            return `${yy}-Q${q}` === selectedReportTime;
         } else if (reportPeriod === 'year') {
             return yy === selectedReportTime;
         }
@@ -1313,9 +1308,9 @@ function renderReports() {
         agencyData[agency].count += 1;
 
         // Group by Date for trend
-        let trendKey = b.date; // default is daily
+        let trendKey = b.date; // default is YYYY-MM-DD
         if (reportPeriod === 'year') {
-            trendKey = b.date.substring(3, 10); // Group by month if year view
+            trendKey = b.date.substring(0, 7); // Group by YYYY-MM if year view
         }
         if (!trendData[trendKey]) {
             trendData[trendKey] = 0;
@@ -1333,23 +1328,23 @@ function renderReports() {
 
     // A) Revenue Trend
     const chartTrend = echarts.init(document.getElementById('chart-revenue-trend'));
-    const trendKeys = Object.keys(trendData).sort((a, b) => {
-        if (reportPeriod === 'year') {
-            // format mm/yyyy
-            const [ma, ya] = a.split('/');
-            const [mb, yb] = b.split('/');
-            return (ya - yb) || (ma - mb);
-        }
-        // format dd/mm/yyyy
-        const [da, ma, ya] = a.split('/');
-        const [db, mb, yb] = b.split('/');
-        return new Date(`${ya}-${ma}-${da}`) - new Date(`${yb}-${mb}-${db}`);
-    });
+    const trendKeys = Object.keys(trendData).sort(); // YYYY-MM-DD or YYYY-MM sorts alphabetically correctly
     
+    const formattedTrendKeys = trendKeys.map(k => {
+        if (k.length === 10) {
+            const [y, m, d] = k.split('-');
+            return `${d}/${m}`;
+        } else if (k.length === 7) {
+            const [y, m] = k.split('-');
+            return `T${m}`;
+        }
+        return k;
+    });
+
     chartTrend.setOption({
         tooltip: { trigger: 'axis', formatter: (params) => `${params[0].name}<br/>Doanh thu: <b>${formatCurrency(params[0].value)}</b>` },
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-        xAxis: { type: 'category', boundaryGap: false, data: trendKeys },
+        xAxis: { type: 'category', boundaryGap: false, data: formattedTrendKeys },
         yAxis: { type: 'value', axisLabel: { formatter: (val) => (val / 1000000).toFixed(1) + 'M' } },
         series: [{
             name: 'Doanh Thu',
@@ -1371,7 +1366,7 @@ function renderReports() {
     const topAgencies = Object.entries(agencyData)
         .sort((a, b) => b[1].revenue - a[1].revenue)
         .slice(0, 10)
-        .reverse(); // Reverse for horizontal bar chart (highest at top)
+        .reverse();
 
     chartTop.setOption({
         tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: (params) => `${params[0].name}<br/>Doanh thu: <b>${formatCurrency(params[0].value)}</b>` },
@@ -1390,7 +1385,7 @@ function renderReports() {
     const chartDebt = echarts.init(document.getElementById('chart-debt-agency'));
     const pieData = Object.entries(agencyData)
         .sort((a, b) => b[1].revenue - a[1].revenue)
-        .slice(0, 15) // Top 15 to avoid clutter
+        .slice(0, 15)
         .map(a => ({ name: a[0], value: a[1].revenue }));
 
     chartDebt.setOption({
@@ -1412,7 +1407,6 @@ function renderReports() {
         }]
     });
     
-    // Resize event listener to make charts responsive
     window.addEventListener('resize', () => {
         if(chartTrend) chartTrend.resize();
         if(chartTop) chartTop.resize();
