@@ -225,13 +225,13 @@ function renderTable() {
         tr.className = "hover:bg-slate-50 transition-colors";
         
         // Tính toán các loại tiền nếu cần
-        const pax = parseInt(b.pax) || 0;
+        const pax = parseFloat(b.pax) || 0;
         const price = parseInt(b.price) || 0;
         const ttPax = pax * price;
-        const bike = parseInt(b.bike_sl) || 0;
+        const bike = parseFloat(b.bike_sl) || 0;
         const bikePrice = parseInt(b.bike_price) || 0;
         const ttBike = bike * bikePrice;
-        const water = parseInt(b.water_sl) || 0;
+        const water = parseFloat(b.water_sl) || 0;
         const waterPrice = parseInt(b.water_price) || 0;
         const ttWater = water * waterPrice;
         const foc = parseInt(b.foc) || 0;
@@ -670,7 +670,7 @@ async function syncGoogleSheets() {
                         const operator = cols[1];
                         const agency = cols[2];
                         const code = cols[3];
-                        const pax = parseInt(cols[4]) || 0;
+                        const pax = parseFloat((cols[4] || '0').replace(',', '.')) || 0;
                         const price = parseInt(cols[5]?.replace(/[^0-9]/g, '')) || 0;
                         const bike = parseInt(cols[7]) || 0;
                         const bikePrice = parseInt(cols[8]?.replace(/[^0-9]/g, '')) || 100000;
@@ -801,15 +801,15 @@ function renderDebtReport() {
         let sumPax = 0, sumAmount = 0, sumInvoices = 0;
         
         filteredBookings.forEach(b => {
-            const pax = parseInt(b.pax) || 0;
+            const pax = parseFloat(b.pax) || 0;
             const price = parseInt(b.price) || 0;
             const ttPax = pax * price;
             
-            const bike = parseInt(b.bike_sl) || 0;
+            const bike = parseFloat(b.bike_sl) || 0;
             const bikePrice = parseInt(b.bike_price) || 0;
             const ttBike = bike * bikePrice;
             
-            const water = parseInt(b.water_sl) || 0;
+            const water = parseFloat(b.water_sl) || 0;
             const waterPrice = parseInt(b.water_price) || 0;
             const ttWater = water * waterPrice;
             
@@ -950,7 +950,7 @@ function exportDebtExcel() {
     let sumTongTien = 0;
 
     dataToExport.forEach(b => {
-        const pax = parseInt(b.pax) || 0;
+        const pax = parseFloat(b.pax) || 0;
         const price = parseInt(b.price) || 0;
         const ttPax = pax * price;
         
