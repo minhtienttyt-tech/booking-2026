@@ -824,11 +824,11 @@ function renderDebtReport() {
                 <td class="px-3 py-3 border-b border-slate-100 text-right text-slate-600">${formatCurrency(ttMoto)}</td>
                 <td class="px-3 py-3 border-b border-slate-100 text-right text-slate-600">${formatCurrency(ttBike)}</td>
                 <td class="px-3 py-3 border-b border-slate-100 text-right text-slate-600">${formatCurrency(ttWater)}</td>
-                <td class="px-3 py-3 border-b border-slate-100 text-right text-rose-500">${foc > 0 ? '-' + formatCurrency(foc) : ''}</td>
                 <td class="px-3 py-3 border-b border-slate-100 text-right font-bold text-amber-600">${formatCurrency(total)}</td>
                 <td class="px-3 py-3 border-b border-slate-100 text-center">
                     ${hasInvoice ? `<span class="px-2 py-1 bg-emerald-50 text-emerald-600 rounded text-[10px] font-bold border border-emerald-200">${b.invoice}</span>` : '<span class="text-slate-300">-</span>'}
                 </td>
+                <td class="px-3 py-3 border-b border-slate-100 text-right text-rose-500">${foc > 0 ? '-' + formatCurrency(foc) : ''}</td>
             `;
             list.appendChild(tr);
         });
