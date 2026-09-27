@@ -31,13 +31,8 @@
     <!-- jsPDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-    <!-- ECharts -->
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans">
-
-    <!-- Sidebar Overlay Backdrop -->
-    <div id="sidebar-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden md:hidden transition-opacity duration-300 opacity-0" onclick="toggleMenu()"></div>
 
     <!-- Orientation Warning -->
     <div id="orientation-warning" class="fixed inset-0 z-[9999] bg-slate-900 flex-col items-center justify-center text-white p-6 text-center hidden">
@@ -47,7 +42,7 @@
     </div>
 
     <!-- Sidebar Navigation -->
-    <nav id="sidebar" class="sidebar fixed -left-64 md:left-0 top-0 bottom-0 w-64 bg-slate-900 text-white z-50 transition-all duration-300">
+    <nav id="sidebar" class="sidebar fixed left-0 top-0 bottom-0 w-64 bg-slate-900 text-white z-50 transition-all duration-300">
         <div class="p-6">
             <div class="flex items-center gap-3 mb-8">
                 <div class="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-900/20">
@@ -92,22 +87,17 @@
     </nav>
 
     <!-- Main Content Area -->
-    <main class="main-content md:ml-64 p-4 md:p-8 min-h-screen pb-24 md:pb-8">
+    <main class="ml-64 p-8 min-h-screen">
         
         <!-- Header -->
-        <header class="flex justify-between items-center mb-8 gap-4">
-            <div class="flex items-center gap-4">
-                <button onclick="toggleMenu()" class="md:hidden p-2 -ml-2 text-slate-500 hover:text-slate-900 focus:outline-none focus:bg-slate-100 rounded-lg">
-                    <i data-lucide="menu" class="w-6 h-6"></i>
-                </button>
-                <div>
-                    <h2 id="page-title" class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Tổng quan</h2>
-                    <p id="page-subtitle" class="text-sm md:text-base text-slate-500">Chào mừng bạn trở lại, Admin</p>
-                </div>
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h2 id="page-title" class="text-3xl font-bold text-slate-900 tracking-tight">Tổng quan</h2>
+                <p id="page-subtitle" class="text-slate-500">Chào mừng bạn trở lại, Admin</p>
             </div>
             <div class="flex items-center gap-4">
                 <div class="relative">
-                    <input type="text" id="search-input" onkeyup="renderTable()" placeholder="Tìm kiếm booking..." class="bg-white border border-slate-200 rounded-full py-2 px-10 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all outline-none text-sm w-64">
+                    <input type="text" id="search-input" autocomplete="off" name="search-booking" onkeyup="renderTable()" placeholder="Tìm kiếm booking..." class="bg-white border border-slate-200 rounded-full py-2 px-10 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all outline-none text-sm w-64">
                     <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i>
                 </div>
                 <button onclick="syncGoogleSheets()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-full font-semibold flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all active:scale-95">
@@ -264,80 +254,13 @@
         </div>
 
         <!-- Page: Reports -->
-        <div id="page-reports" class="page hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <!-- Filter Section -->
-            <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
-                <div>
-                    <h2 class="text-xl font-bold text-slate-900">Dashboard Thống Kê</h2>
-                    <p class="text-sm text-slate-500 mt-1">Tổng quan doanh thu, công nợ và top khách hàng</p>
+        <div id="page-reports" class="page hidden text-center py-20">
+            <div class="max-w-md mx-auto">
+                <div class="w-20 h-20 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i data-lucide="line-chart" class="w-10 h-10"></i>
                 </div>
-                <div class="flex flex-wrap items-center gap-3">
-                    <div class="flex bg-slate-100 p-1 rounded-xl">
-                        <button id="btn-period-month" onclick="setReportPeriod('month')" class="px-4 py-1.5 text-sm font-semibold rounded-lg bg-white shadow-sm text-slate-800 transition-all">Tháng</button>
-                        <button id="btn-period-quarter" onclick="setReportPeriod('quarter')" class="px-4 py-1.5 text-sm font-semibold rounded-lg text-slate-500 hover:text-slate-800 transition-all">Quý</button>
-                        <button id="btn-period-year" onclick="setReportPeriod('year')" class="px-4 py-1.5 text-sm font-semibold rounded-lg text-slate-500 hover:text-slate-800 transition-all">Năm</button>
-                    </div>
-                    <select id="report-time-selector" onchange="renderReports()" class="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 outline-none focus:border-amber-500 font-semibold text-slate-800 min-w-[150px]">
-                    </select>
-                </div>
-            </div>
-
-            <!-- KPI Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-3xl p-6 text-white shadow-lg shadow-blue-500/20">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <p class="text-blue-100 font-medium mb-1">Tổng số Booking</p>
-                            <h3 class="text-3xl font-bold" id="kpi-bookings">0</h3>
-                        </div>
-                        <div class="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-                            <i data-lucide="calendar-check" class="w-6 h-6"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="bg-gradient-to-br from-amber-500 to-orange-500 rounded-3xl p-6 text-white shadow-lg shadow-amber-500/20">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <p class="text-amber-100 font-medium mb-1">Tổng Khách (Pax)</p>
-                            <h3 class="text-3xl font-bold" id="kpi-pax">0</h3>
-                        </div>
-                        <div class="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-                            <i data-lucide="users" class="w-6 h-6"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-3xl p-6 text-white shadow-lg shadow-emerald-500/20">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <p class="text-emerald-100 font-medium mb-1">Tổng Doanh thu / Công nợ</p>
-                            <h3 class="text-3xl font-bold" id="kpi-revenue">0 đ</h3>
-                        </div>
-                        <div class="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-                            <i data-lucide="banknote" class="w-6 h-6"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Charts Area -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm">
-                    <h3 class="text-lg font-bold text-slate-800 mb-4">Xu hướng Doanh Thu</h3>
-                    <div id="chart-revenue-trend" class="w-full h-[300px]"></div>
-                </div>
-                <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm">
-                    <h3 class="text-lg font-bold text-slate-800 mb-4">Top 10 Đại lý (Doanh thu)</h3>
-                    <div id="chart-top-customers" class="w-full h-[300px]"></div>
-                </div>
-            </div>
-            
-            <div class="grid grid-cols-1 gap-6 mb-6">
-                <div class="bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm">
-                    <h3 class="text-lg font-bold text-slate-800 mb-4">Tỷ trọng Công nợ theo Đại lý</h3>
-                    <div id="chart-debt-agency" class="w-full h-[350px]"></div>
-                </div>
+                <h3 class="text-2xl font-bold mb-2">Thống kê chi tiết</h3>
+                <p class="text-slate-500">Hệ thống đang tổng hợp dữ liệu để cung cấp biểu đồ doanh thu và xu hướng booking.</p>
             </div>
         </div>
 
@@ -399,6 +322,7 @@
                                 <th class="px-3 py-3 border-b border-slate-200 text-right whitespace-nowrap">Giá Tour</th>
                                 <th class="px-3 py-3 border-b border-slate-200 text-right whitespace-nowrap">Xe Đạp</th>
                                 <th class="px-3 py-3 border-b border-slate-200 text-right whitespace-nowrap">Nước</th>
+                                <th class="px-3 py-3 border-b border-slate-200 text-right whitespace-nowrap">Xe Máy</th>
                                 <th class="px-3 py-3 border-b border-slate-200 text-right whitespace-nowrap">Trừ FOC</th>
                                 <th class="px-3 py-3 border-b border-slate-200 text-right whitespace-nowrap font-bold text-amber-600">Tổng Tiền</th>
                                 <th class="px-3 py-3 border-b border-slate-200 text-center whitespace-nowrap">Hóa Đơn</th>
@@ -411,7 +335,7 @@
                             <tr>
                                 <td colspan="3" class="px-3 py-3 text-right">TỔNG CỘNG:</td>
                                 <td class="px-3 py-3 text-center" id="debt-detail-total-pax">0</td>
-                                <td colspan="4" class="px-3 py-3"></td>
+                                <td colspan="5" class="px-3 py-3"></td>
                                 <td class="px-3 py-3 text-right text-amber-600 text-base whitespace-nowrap" id="debt-detail-total-amount">0 đ</td>
                                 <td class="px-3 py-3 text-center whitespace-nowrap" id="debt-detail-total-invoices">0</td>
                             </tr>
@@ -496,6 +420,14 @@
                                 <input type="number" id="form-water-price" value="10000" oninput="calculateTotalForm()" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none transition-all focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
                             </div>
                             <div class="space-y-1">
+                                <label class="text-[10px] font-bold uppercase text-slate-400">Xe máy (SL)</label>
+                                <input type="number" id="form-moto-sl" value="0" oninput="calculateTotalForm()" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none transition-all focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-[10px] font-bold uppercase text-slate-400">Đơn giá Xe máy</label>
+                                <input type="number" id="form-moto-price" value="150000" oninput="calculateTotalForm()" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none transition-all focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500">
+                            </div>
+                            <div class="space-y-1">
                                 <label class="text-[10px] font-bold uppercase text-rose-500">Trừ FOC</label>
                                 <input type="number" id="form-foc" value="0" oninput="calculateTotalForm()" class="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none transition-all focus:ring-2 focus:rose-500/20 focus:border-rose-500">
                             </div>
@@ -545,11 +477,12 @@
             </div>
             <h2 class="text-3xl font-bold mb-2 tracking-tight">Hệ thống Booking</h2>
             <p class="text-slate-500 mb-8">Vui lòng nhập mã PIN để tiếp tục</p>
-            <input type="password" id="login-code" placeholder="PIN" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-center text-2xl tracking-[0.5em] outline-none focus:ring-4 focus:ring-amber-500/10 mb-6 transition-all">
+            <input type="text" name="username" autocomplete="username" class="hidden" style="display:none;">
+            <input type="password" id="login-code" autocomplete="current-password" placeholder="PIN" class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-center text-2xl tracking-[0.5em] outline-none focus:ring-4 focus:ring-amber-500/10 mb-6 transition-all">
             <button onclick="handleLogin()" class="w-full bg-slate-900 hover:bg-black text-white py-4 rounded-2xl font-bold shadow-xl transition-all active:scale-95">Đăng nhập</button>
         </div>
     </div>
 
-    <script src="app.js?v=2"></script>
+    <script src="app.js?v=3"></script>
 </body>
 </html>

@@ -50,10 +50,12 @@ function doPost(e) {
       throw new Error("Không tìm thấy Sheet Đại lý: " + sheetName);
     }
 
-    // Các cột trong Sheet (0-indexed):
-    // 0:Ngày, 1:Điều hành, 2:Công ty, 3:Code, 4:Pax, 5:Giá Pax, 6:TT Pax
-    // 7:Xe đạp, 8:Giá xe, 9:TT Xe, 10:Nước, 11:Giá nước, 12:TT Nước
-    // 13:Tổng tiền, 14:Hóa đơn, 15:Ghi chú (Tên khách), 16:Trừ FOC
+    // 0:Ngày, 1:Điều hành, 2:Công ty, 3:Code, 
+    // 4:Pax (SL), 5:Giá Pax, 6:TT Pax, 
+    // 7:Xe máy SL, 8:Giá Xe máy, 9:TT Xe máy,
+    // 10:Xe đạp SL, 11:Giá Xe đạp, 12:TT Xe đạp, 
+    // 13:Đồ uống SL, 14:Giá Đồ uống, 15:TT Đồ uống,
+    // 16:Tổng tiền, 17:Hóa đơn, 18:Ghi chú, 19:Trừ FOC
     
     if (action === 'CREATE') {
       const newRow = calculateRowArray(data);
@@ -70,7 +72,7 @@ function doPost(e) {
       for (let i = 4; i < values.length; i++) {
         const rowCode = values[i][3] ? values[i][3].toString().trim() : '';
         const rowDate = values[i][0] ? values[i][0].toString().trim() : '';
-        const rowGuest = values[i][15] ? values[i][15].toString().trim() : '';
+        const rowGuest = values[i][18] ? values[i][18].toString().trim() : '';
         
         // Ưu tiên tìm theo Code
         if (data.code && data.code.trim() !== '' && rowCode === data.code.trim()) {
@@ -92,8 +94,8 @@ function doPost(e) {
                                .setMimeType(ContentService.MimeType.JSON);
         } else if (action === 'UPDATE') {
           const updatedRow = calculateRowArray(data);
-          // Update 17 cột
-          sheet.getRange(rowIndex, 1, 1, 17).setValues([updatedRow]);
+          // Update 20 cột
+          sheet.getRange(rowIndex, 1, 1, 20).setValues([updatedRow]);
           return ContentService.createTextOutput(JSON.stringify({ status: "success", message: "Đã cập nhật booking trên Sheet" }))
                                .setMimeType(ContentService.MimeType.JSON);
         }
@@ -113,26 +115,30 @@ function calculateRowArray(data) {
   const ttPax = (data.pax || 0) * (data.price || 0);
   const ttBike = (data.bike_sl || 0) * (data.bike_price || 0);
   const ttWater = (data.water_sl || 0) * (data.water_price || 0);
-  const total = (data.amount !== undefined && data.amount !== null) ? data.amount : (ttPax + ttBike + ttWater - (data.foc || 0));
+  const ttMoto = (data.moto_sl || 0) * (data.moto_price || 0);
+  const total = (data.amount !== undefined && data.amount !== null) ? data.amount : (ttPax + ttBike + ttWater + ttMoto - (data.foc || 0));
 
   return [
     formatDateForSheet(data.date) || '', // 0
-    data.operator || '', // 1
+    data.operator || '', // 1 (Điều Hành)
     data.agency || '', // 2
     data.code || '', // 3
-    data.pax || 0, // 4
+    data.pax || 0, // 4 (SL)
     data.price || 0, // 5
     ttPax, // 6
-    data.bike_sl || 0, // 7
-    data.bike_price || 0, // 8
-    ttBike, // 9
-    data.water_sl || 0, // 10
-    data.water_price || 0, // 11
-    ttWater, // 12
-    total, // 13
-    data.invoice || '', // 14
-    data.guest || data.note || '', // 15
-    data.foc || 0 // 16
+    data.moto_sl || 0, // 7 (Xe máy SL)
+    data.moto_price || 0, // 8
+    ttMoto, // 9
+    data.bike_sl || 0, // 10 (Xe đạp SL)
+    data.bike_price || 0, // 11
+    ttBike, // 12
+    data.water_sl || 0, // 13 (Đồ uống SL)
+    data.water_price || 0, // 14
+    ttWater, // 15
+    total, // 16 (Tổng Tiền)
+    data.invoice || '', // 17 (Hóa đơn)
+    data.guest || data.note || '', // 18 (Ghi chú)
+    data.foc || 0 // 19 (Trừ FOC)
   ];
 }
 
@@ -169,7 +175,8 @@ function handleLegacyBatchUpdate(updates) {
     }
 
     if (rowIndex > -1) {
-      sheet.getRange(rowIndex, 15).setValue(update.invoice); // Cột Hóa Đơn
+      // Hóa đơn ở cột R (index 17, column 18 in getRange)
+      sheet.getRange(rowIndex, 18).setValue(update.invoice); 
       updatedCount++;
     }
   }
@@ -217,15 +224,17 @@ function doGet(e) {
                 operator: values[r][1] ? values[r][1].toString() : '',
                 pax: parseInt(values[r][4]) || 0,
                 price: parseInt(values[r][5]) || 0,
-                bike_sl: parseInt(values[r][7]) || 0,
-                bike_price: parseInt(values[r][8]) || 100000,
-                water_sl: parseInt(values[r][10]) || 0,
-                water_price: parseInt(values[r][11]) || 10000,
-                amount: parseInt(values[r][13]) || 0,
-                invoice: values[r][14] ? values[r][14].toString() : '',
-                guest: values[r][15] ? values[r][15].toString() : 'Khách đoàn',
-                foc: parseInt(values[r][16]) || 0,
-                status: (values[r][14] && values[r][14].toString().trim() !== '') ? 'invoiced' : 'confirmed',
+                moto_sl: parseInt(values[r][7]) || 0,
+                moto_price: parseInt(values[r][8]) || 150000,
+                bike_sl: parseInt(values[r][10]) || 0,
+                bike_price: parseInt(values[r][11]) || 100000,
+                water_sl: parseInt(values[r][13]) || 0,
+                water_price: parseInt(values[r][14]) || 10000,
+                amount: parseInt(values[r][16]) || 0,
+                invoice: values[r][17] ? values[r][17].toString() : '',
+                guest: values[r][18] ? values[r][18].toString() : 'Khách đoàn',
+                foc: parseInt(values[r][19]) || 0,
+                status: (values[r][17] && values[r][17].toString().trim() !== '') ? 'invoiced' : 'confirmed',
                 note: 'Đồng bộ từ Google Sheets'
             });
         }

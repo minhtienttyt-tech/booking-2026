@@ -39,6 +39,8 @@ function initApp() {
                 bike_price: 100000,
                 water_sl: 2, 
                 water_price: 10000,
+                moto_sl: 0,
+                moto_price: 150000,
                 foc: 0, 
                 amount: 1620000, 
                 invoice: '', 
@@ -68,6 +70,94 @@ function initApp() {
             // Nếu có chức năng tìm kiếm ở dashboard thì có thể gọi thêm
         });
     }
+
+    initTableHighlighting();
+}
+
+// --- Table Highlighting ---
+function initTableHighlighting() {
+    document.addEventListener('mouseover', function(e) {
+        const td = e.target.closest('td, th');
+        if (!td) return;
+        const tr = td.closest('tr');
+        const table = td.closest('table');
+        if (!table) return;
+
+        const cellIndex = td.cellIndex;
+        if (cellIndex === undefined) return;
+
+        // Highlight Row
+        tr.classList.add('row-highlight');
+
+        // Highlight Column
+        const rows = table.rows;
+        for (let i = 0; i < rows.length; i++) {
+            if (rows[i].cells[cellIndex]) {
+                rows[i].cells[cellIndex].classList.add('col-highlight');
+            }
+        }
+    });
+
+    document.addEventListener('mouseout', function(e) {
+        const td = e.target.closest('td, th');
+        if (!td) return;
+        const tr = td.closest('tr');
+        const table = td.closest('table');
+        if (!table) return;
+
+        const cellIndex = td.cellIndex;
+        if (cellIndex === undefined) return;
+
+        // Remove Highlight Row
+        tr.classList.remove('row-highlight');
+
+        // Remove Highlight Column
+        const rows = table.rows;
+        for (let i = 0; i < rows.length; i++) {
+            if (rows[i].cells[cellIndex]) {
+                rows[i].cells[cellIndex].classList.remove('col-highlight');
+            }
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        const td = e.target.closest('td, th');
+        if (!td) {
+            // Click outside table, clear selection
+            const btn = e.target.closest('button, a, input, select');
+            if (!btn) {
+               document.querySelectorAll('.col-selected, .row-selected, .cell-selected').forEach(el => {
+                   el.classList.remove('col-selected', 'row-selected', 'cell-selected');
+               });
+            }
+            return;
+        }
+        const tr = td.closest('tr');
+        const table = td.closest('table');
+        if (!table) return;
+
+        // Clear previous selections
+        table.querySelectorAll('.col-selected, .row-selected, .cell-selected').forEach(el => {
+            el.classList.remove('col-selected', 'row-selected', 'cell-selected');
+        });
+
+        const cellIndex = td.cellIndex;
+        if (cellIndex === undefined) return;
+
+        // Add Selection Row
+        tr.classList.add('row-selected');
+
+        // Add Selection Column
+        const rows = table.rows;
+        for (let i = 0; i < rows.length; i++) {
+            if (rows[i].cells[cellIndex]) {
+                rows[i].cells[cellIndex].classList.add('col-selected');
+            }
+        }
+
+        // Add Selection Cell
+        td.classList.add('cell-selected');
+    });
 }
 
 // --- Authentication ---
@@ -100,7 +190,6 @@ function logout() {
 
 // --- Navigation ---
 function navigate(view) {
-    if (typeof closeMenu === 'function') closeMenu();
     currentView = view;
     
     // Update Nav UI
@@ -125,9 +214,6 @@ function navigate(view) {
 
     if (view === 'dashboard') renderDashboard();
     if (view === 'bookings') renderTable();
-    if (view === 'reports') {
-        if (typeof renderReports === 'function') renderReports();
-    }
     if (view === 'debt') {
         renderDebtMonthFilter();
         renderDebtReport();
@@ -234,8 +320,11 @@ function renderTable() {
         const water = parseFloat(b.water_sl) || 0;
         const waterPrice = parseInt(b.water_price) || 0;
         const ttWater = water * waterPrice;
+        const moto = parseFloat(b.moto_sl) || 0;
+        const motoPrice = parseInt(b.moto_price) || 0;
+        const ttMoto = moto * motoPrice;
         const foc = parseInt(b.foc) || 0;
-        const total = (b.amount !== undefined) ? parseInt(b.amount) : (ttPax + ttBike + ttWater - foc);
+        const total = (b.amount !== undefined) ? parseInt(b.amount) : (ttPax + ttBike + ttWater + ttMoto - foc);
         const hasInvoice = (b.status === 'invoiced' || (b.invoice && b.invoice.trim() !== ''));
 
         tr.innerHTML = `
@@ -302,9 +391,11 @@ function calculateTotalForm() {
     const bike_price = parseInt(document.getElementById('form-bike-price').value) || 0;
     const water_sl = parseInt(document.getElementById('form-water-sl').value) || 0;
     const water_price = parseInt(document.getElementById('form-water-price').value) || 0;
+    const moto_sl = parseInt(document.getElementById('form-moto-sl').value) || 0;
+    const moto_price = parseInt(document.getElementById('form-moto-price').value) || 0;
     
     // FOC chỉ để ghi chú, không trừ vào tổng tiền
-    const total = (pax * price) + (bike_sl * bike_price) + (water_sl * water_price);
+    const total = (pax * price) + (bike_sl * bike_price) + (water_sl * water_price) + (moto_sl * moto_price);
     document.getElementById('form-total-display').value = new Intl.NumberFormat('vi-VN').format(total);
 }
 
@@ -315,6 +406,7 @@ function showAddModal() {
     
     document.getElementById('form-bike-price').value = 100000;
     document.getElementById('form-water-price').value = 10000;
+    document.getElementById('form-moto-price').value = 150000;
     calculateTotalForm();
     
     const modal = document.getElementById('booking-modal');
@@ -338,10 +430,12 @@ function handleFormSubmit(e) {
     const bike_price = parseInt(document.getElementById('form-bike-price').value) || 0;
     const water_sl = parseInt(document.getElementById('form-water-sl').value) || 0;
     const water_price = parseInt(document.getElementById('form-water-price').value) || 0;
+    const moto_sl = parseInt(document.getElementById('form-moto-sl').value) || 0;
+    const moto_price = parseInt(document.getElementById('form-moto-price').value) || 0;
     const focInput = document.getElementById('form-foc').value.trim();
     
     // Tổng tiền không trừ FOC
-    const calculatedAmount = (pax * price) + (bike_sl * bike_price) + (water_sl * water_price);
+    const calculatedAmount = (pax * price) + (bike_sl * bike_price) + (water_sl * water_price) + (moto_sl * moto_price);
 
     const newBooking = {
         id: id ? parseInt(id) : Date.now(),
@@ -357,6 +451,8 @@ function handleFormSubmit(e) {
         bike_price: bike_price,
         water_sl: water_sl,
         water_price: water_price,
+        moto_sl: moto_sl,
+        moto_price: moto_price,
         foc: focInput, // Lưu nguyên chuỗi text FOC
         amount: calculatedAmount,
         status: document.getElementById('form-status').value,
@@ -412,6 +508,8 @@ function editBooking(id) {
     document.getElementById('form-bike-price').value = b.bike_price !== undefined ? b.bike_price : 100000;
     document.getElementById('form-water-sl').value = b.water_sl || 0;
     document.getElementById('form-water-price').value = b.water_price !== undefined ? b.water_price : 10000;
+    document.getElementById('form-moto-sl').value = b.moto_sl || 0;
+    document.getElementById('form-moto-price').value = b.moto_price !== undefined ? b.moto_price : 150000;
     document.getElementById('form-status').value = b.status;
     document.getElementById('form-foc').value = b.foc || 0;
     document.getElementById('form-note').value = b.note;
@@ -588,127 +686,17 @@ async function syncSingleBookingToSheet(action, booking) {
 }
 
 async function syncGoogleSheets() {
-    showToast('Đang quét danh sách đại lý từ Google Sheets...', 'refresh-cw');
+    showToast('Đang đồng bộ dữ liệu từ Google Sheets...', 'refresh-cw');
     
     const syncBtn = document.querySelector('button[onclick="syncGoogleSheets()"]');
     if (syncBtn) syncBtn.disabled = true;
-    
-    const SHEET_ID = '1ck7dyliLdDdhcmRiuwgo-ahUx1JtIhApYR_uArXwTVk';
-    let SHEETS_TO_SYNC = {};
 
     try {
-        const mapRes = await fetch(APPS_SCRIPT_URL);
-        const mapData = await mapRes.json();
+        const res = await fetch(APPS_SCRIPT_URL);
+        const mapData = await res.json();
         
-        if (mapData.status === 'success' && mapData.sheets) {
-            SHEETS_TO_SYNC = mapData.sheets;
-            showToast(`Đã tìm thấy ${Object.keys(SHEETS_TO_SYNC).length} đại lý. Đang tải dữ liệu...`, 'refresh-cw');
-        } else {
-            throw new Error(mapData.message || 'Không lấy được danh sách');
-        }
-    } catch(err) {
-        console.error('Lỗi API lấy danh sách sheet:', err);
-        SHEETS_TO_SYNC = {
-            "EXO": "1737030180", "Aurora": "633018456", "Wideeydes": "1646090732",
-            "Discova": "950090025", "Terra Indochina": "1836936009", "Vido tour": "1025372703",
-            "Sen rừng": "1906466879", "Asia Exotica": "1094221168", "Avex Travel": "340619046",
-            "Smile Travel": "1262719362", "Du lịch hồ gươm": "264948914", "Topas Travel": "590165919",
-            "Asia Golf Trail": "654006445", "Saffrontravel": "169165853", "Indochina Travelland": "351205723",
-            "Indochina Voyages": "87292317", "Vietnam Decouveter": "265493846", "Fantasea": "1342934234",
-            "Threeland": "110451216", "4seasons Travel": "873149458", "Image Travel": "849443001",
-            "Lily Travel (New)": "677915366", "EsyWays Travel ( New)": "519769478", "Asiatica Travel": "80709107",
-            "Vietnamtourism": "1678726686", "Asam Travel (New)": "513845518", "Go Beyond": "759587261",
-            "Asia Pacific Travel": "53955210", "ITS (NEW)": "1773904843", "Joy Mark": "158224769",
-            "Desk Air": "1310105186", "Fine Asian Escapes": "313388583", "Vivu Travel (New)": "237711165",
-            "Absolute Asia Travel": "2125010795", "Victoria Tour": "85652038", "G Plus": "1163648113",
-            "Asia Pioneer": "1587350529", "Asean Link Travel": "190143606", "iLotus": "383860712",
-            "Tiên phong Á Châu": "993483268", "FTrip Travel": "1275850616", "Glamour Adventures": "288361656",
-            "Jacky Travel": "910519609", "Eviva Travel": "190428605", "New Orient Tour": "1466699628",
-            "Vietnam Travel & Cruise": "126035614", "Tonkin Travel": "1753992483", "Hanoi Voyages": "1986248705",
-            "Anasia Travel": "253150383", "Vietnam Travel Mart": "1085026967", "Anasia Link": "1910986182",
-            "Rutas Asia": "2047118136"
-        };
-        showToast('Sử dụng danh sách đại lý dự phòng...', 'alert-circle');
-    }
-
-    // Loai bo cac sheet tong hop bang GID de tranh loi unicode
-    const summaryGids = ["428736774", "2145431161", "1423458328", "67477759"];
-    for (const key in SHEETS_TO_SYNC) {
-        if (summaryGids.includes(SHEETS_TO_SYNC[key])) {
-            delete SHEETS_TO_SYNC[key];
-        }
-    }
-
-    let newBookings = [];
-    const entries = Object.entries(SHEETS_TO_SYNC);
-    const batchSize = 10; 
-    let successCount = 0;
-
-    try {
-        for (let i = 0; i < entries.length; i += batchSize) {
-            const batch = entries.slice(i, i + batchSize);
-            await Promise.all(batch.map(async ([sheetName, gid]) => {
-                const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${gid}`;
-                try {
-                    const res = await fetch(CSV_URL);
-                    if (!res.ok) return;
-                    const csvData = await res.text();
-                    
-                    const lines = csvData.split('\n');
-                    
-                    // Bắt đầu đọc từ dòng 1 thay vì 4, và kiểm tra tính hợp lệ của ngày
-                    for (let j = 1; j < lines.length; j++) {
-                        if (!lines[j] || lines[j].trim() === '') continue;
-                        
-                        const cols = lines[j].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/^"|"$/g, '').trim());
-                        if (cols.length < 5 || !cols[0]) continue; 
-
-                        const dateStr = cols[0];
-                        // Bỏ qua các dòng tiêu đề hoặc không chứa số ngày tháng hợp lệ
-                        if (!dateStr || dateStr.toLowerCase().includes('ngày') || dateStr === '""' || !dateStr.match(/\d/)) continue;
-
-                        const operator = cols[1];
-                        const agency = cols[2];
-                        const code = cols[3];
-                        const pax = parseFloat((cols[4] || '0').replace(',', '.')) || 0;
-                        const price = parseInt(cols[5]?.replace(/[^0-9]/g, '')) || 0;
-                        const bike = parseInt(cols[7]) || 0;
-                        const bikePrice = parseInt(cols[8]?.replace(/[^0-9]/g, '')) || 100000;
-                        const water = parseInt(cols[10]) || 0;
-                        const waterPrice = parseInt(cols[11]?.replace(/[^0-9]/g, '')) || 10000;
-                        const foc = parseInt(cols[16]?.replace(/[^0-9]/g, '')) || 0;
-                        const invoice = cols[14];
-                        const note = cols[15];
-
-                        newBookings.push({
-                            id: Date.now() + Math.floor(Math.random() * 1000000),
-                            date: formatDateForApp(dateStr),
-                            agency: agency || sheetName,
-                            code: code || '',
-                            operator: operator || '',
-                            guest: note || 'Khách đoàn',
-                            pax: pax,
-                            price: price,
-                            bike_sl: bike,
-                            bike_price: bikePrice,
-                            water_sl: water,
-                            water_price: waterPrice,
-                            amount: parseInt(cols[13]?.replace(/[^0-9]/g, '')) || 0,
-                            foc: foc,
-                            invoice: invoice || '',
-                            status: (invoice && invoice.trim() !== '') ? 'invoiced' : 'confirmed',
-                            note: 'Đồng bộ từ Google Sheets'
-                        });
-                    }
-                    successCount++;
-                } catch (err) {
-                    console.error(`Lỗi đọc sheet ${sheetName}:`, err);
-                }
-            }));
-        }
-
-        if (newBookings.length > 0) {
-            bookings = newBookings;
+        if (mapData.status === 'success' && mapData.data) {
+            bookings = mapData.data;
             saveData();
             renderDashboard();
             renderTable();
@@ -717,12 +705,12 @@ async function syncGoogleSheets() {
                 renderDebtReport();
             }
             populateAgencyFilter();
-            showToast(`Đã đồng bộ ${successCount} đại lý với ${bookings.length} booking thành công!`, 'check');
+            showToast(`Đã đồng bộ ${bookings.length} booking thành công!`, 'check');
         } else {
-            showToast('Không có dữ liệu mới nào được tìm thấy.', 'info');
+            throw new Error(mapData.message || 'Không lấy được danh sách booking');
         }
     } catch (error) {
-        console.error('Lỗi khi tải dữ liệu Google Sheets:', error);
+        console.error('Lỗi API lấy danh sách booking:', error);
         showToast('Có lỗi xảy ra khi đồng bộ!', 'alert-circle');
     } finally {
         if (syncBtn) syncBtn.disabled = false;
@@ -813,8 +801,12 @@ function renderDebtReport() {
             const waterPrice = parseInt(b.water_price) || 0;
             const ttWater = water * waterPrice;
             
+            const moto = parseFloat(b.moto_sl) || 0;
+            const motoPrice = parseInt(b.moto_price) || 0;
+            const ttMoto = moto * motoPrice;
+            
             const foc = parseInt(b.foc) || 0;
-            const total = (b.amount !== undefined) ? parseInt(b.amount) : (ttPax + ttBike + ttWater - foc);
+            const total = (b.amount !== undefined) ? parseInt(b.amount) : (ttPax + ttBike + ttWater + ttMoto - foc);
             
             sumPax += pax;
             sumAmount += total;
@@ -831,6 +823,7 @@ function renderDebtReport() {
                 <td class="px-3 py-3 border-b border-slate-100 text-right text-slate-600">${formatCurrency(ttPax)}</td>
                 <td class="px-3 py-3 border-b border-slate-100 text-right text-slate-600">${formatCurrency(ttBike)}</td>
                 <td class="px-3 py-3 border-b border-slate-100 text-right text-slate-600">${formatCurrency(ttWater)}</td>
+                <td class="px-3 py-3 border-b border-slate-100 text-right text-slate-600">${formatCurrency(ttMoto)}</td>
                 <td class="px-3 py-3 border-b border-slate-100 text-right text-rose-500">${foc > 0 ? '-' + formatCurrency(foc) : ''}</td>
                 <td class="px-3 py-3 border-b border-slate-100 text-right font-bold text-amber-600">${formatCurrency(total)}</td>
                 <td class="px-3 py-3 border-b border-slate-100 text-center">
@@ -932,6 +925,7 @@ function exportDebtExcel() {
     
     aoa.push([
         "Ngày", "Điều Hành", "Công Ty", "Code", "SL", "Giá Tiền", "Thành Tiền", 
+        "Xe máy", "", "",
         "Xe đạp", "", "", 
         "Nước lọc", "", "", 
         "Tổng Tiền", "Hóa Đơn", "Ghi chú", "Trừ FOOC"
@@ -941,12 +935,14 @@ function exportDebtExcel() {
         "", "", "", "", "", "", "", 
         "SL", "Giá Tiền", "Thành Tiền", 
         "SL", "Đơn giá", "Thành Tiền", 
+        "SL", "Đơn giá", "Thành Tiền", 
         "", "", "", ""
     ]);
 
     let sumThanhTienPax = 0;
     let sumThanhTienXe = 0;
     let sumThanhTienNuoc = 0;
+    let sumThanhTienMoto = 0;
     let sumTongTien = 0;
 
     dataToExport.forEach(b => {
@@ -962,12 +958,17 @@ function exportDebtExcel() {
         const waterPrice = parseInt(b.water_price) || 0;
         const ttWater = water * waterPrice;
         
+        const moto = parseInt(b.moto_sl) || 0;
+        const motoPrice = parseInt(b.moto_price) || 0;
+        const ttMoto = moto * motoPrice;
+        
         const foc = parseInt(b.foc) || 0;
-        const total = (b.amount !== undefined) ? parseInt(b.amount) : (ttPax + ttBike + ttWater - foc);
+        const total = (b.amount !== undefined) ? parseInt(b.amount) : (ttPax + ttBike + ttWater + ttMoto - foc);
         
         sumThanhTienPax += ttPax;
         sumThanhTienXe += ttBike;
         sumThanhTienNuoc += ttWater;
+        sumThanhTienMoto += ttMoto;
         sumTongTien += total;
 
         aoa.push([
@@ -978,6 +979,9 @@ function exportDebtExcel() {
             pax || '',
             price || '',
             ttPax || '',
+            moto || '',
+            motoPrice || '',
+            ttMoto || '',
             bike || '',
             bikePrice || '',
             ttBike || '',
@@ -993,6 +997,7 @@ function exportDebtExcel() {
 
     aoa.push([
         "TỔNG CỘNG", "", "", "", "", "", sumThanhTienPax || "",
+        "", "", sumThanhTienMoto || "",
         "", "", sumThanhTienXe || "",
         "", "", sumThanhTienNuoc || "",
         sumTongTien || "", "", "", ""
@@ -1003,7 +1008,7 @@ function exportDebtExcel() {
 
     ws['!merges'] = [
         { s: {r:0, c:0}, e: {r:0, c:3} },
-        { s: {r:1, c:4}, e: {r:1, c:12} },
+        { s: {r:1, c:4}, e: {r:1, c:15} },
         { s: {r:5, c:0}, e: {r:6, c:0} },
         { s: {r:5, c:1}, e: {r:6, c:1} },
         { s: {r:5, c:2}, e: {r:6, c:2} },
@@ -1013,10 +1018,11 @@ function exportDebtExcel() {
         { s: {r:5, c:6}, e: {r:6, c:6} },
         { s: {r:5, c:7}, e: {r:5, c:9} },
         { s: {r:5, c:10}, e: {r:5, c:12} },
-        { s: {r:5, c:13}, e: {r:6, c:13} },
-        { s: {r:5, c:14}, e: {r:6, c:14} },
-        { s: {r:5, c:15}, e: {r:6, c:15} },
+        { s: {r:5, c:13}, e: {r:5, c:15} },
         { s: {r:5, c:16}, e: {r:6, c:16} },
+        { s: {r:5, c:17}, e: {r:6, c:17} },
+        { s: {r:5, c:18}, e: {r:6, c:18} },
+        { s: {r:5, c:19}, e: {r:6, c:19} },
         { s: {r: aoa.length - 1, c:0}, e: {r: aoa.length - 1, c:5} }
     ];
 
@@ -1024,8 +1030,8 @@ function exportDebtExcel() {
         { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 15 },
         { wch: 5 },  { wch: 12 }, { wch: 12 }, { wch: 5 },
         { wch: 10 }, { wch: 12 }, { wch: 5 },  { wch: 10 },
-        { wch: 12 }, { wch: 15 }, { wch: 12 }, { wch: 30 },
-        { wch: 12 }
+        { wch: 12 }, { wch: 5 },  { wch: 10 }, { wch: 12 },
+        { wch: 15 }, { wch: 12 }, { wch: 30 }, { wch: 12 }
     ];
 
     // Áp dụng style (màu sắc, viền, font, pageSetup) cho file Excel đẹp mắt
@@ -1169,247 +1175,4 @@ async function syncBackToSheets() {
         if(syncBtn) syncBtn.disabled = false;
         lucide.createIcons();
     }
-}
-// --- Dashboard Reports Logic ---
-let reportPeriod = 'month';
-let selectedReportTime = '';
-
-function setReportPeriod(period) {
-    reportPeriod = period;
-    document.querySelectorAll('#btn-period-month, #btn-period-quarter, #btn-period-year').forEach(btn => {
-        btn.classList.remove('bg-white', 'shadow-sm', 'text-slate-800');
-        btn.classList.add('text-slate-500');
-    });
-    const activeBtn = document.getElementById(`btn-period-${period}`);
-    if (activeBtn) {
-        activeBtn.classList.remove('text-slate-500');
-        activeBtn.classList.add('bg-white', 'shadow-sm', 'text-slate-800');
-    }
-    
-    // Set default selected time
-    // b.date is YYYY-MM-DD
-    const allMonths = [...new Set(bookings.filter(b => b.date && b.date.length >= 7).map(b => b.date.substring(0, 7)))].sort().reverse();
-    
-    if (allMonths.length > 0) {
-        if (period === 'month') {
-            selectedReportTime = allMonths[0];
-        } else if (period === 'quarter') {
-            const [y, m] = allMonths[0].split('-');
-            const q = Math.ceil(parseInt(m) / 3);
-            selectedReportTime = `${y}-Q${q}`;
-        } else if (period === 'year') {
-            selectedReportTime = allMonths[0].substring(0, 4);
-        }
-    }
-    
-    renderReports();
-}
-
-function renderReports() {
-    const timeSelector = document.getElementById('report-time-selector');
-    if (!timeSelector) return;
-
-    const isChangeEvent = typeof event !== 'undefined' && event && event.target && event.target.id === 'report-time-selector';
-    if (isChangeEvent) {
-        selectedReportTime = timeSelector.value;
-    }
-
-    // 1. Prepare options for time selector
-    const allMonths = [...new Set(bookings.filter(b => b.date && b.date.length >= 7).map(b => b.date.substring(0, 7)))].sort().reverse();
-
-    if (!selectedReportTime && allMonths.length > 0) {
-        selectedReportTime = allMonths[0];
-    }
-
-    let optionsHtml = '';
-    
-    if (reportPeriod === 'month') {
-        allMonths.forEach(m => { // m is YYYY-MM
-            const [yy, mm] = m.split('-');
-            optionsHtml += `<option value="${m}" ${selectedReportTime === m ? 'selected' : ''}>Tháng ${mm}/${yy}</option>`;
-        });
-    } else if (reportPeriod === 'quarter') {
-        const qSet = new Set();
-        allMonths.forEach(m => {
-            const [yy, mm] = m.split('-');
-            const q = Math.ceil(parseInt(mm) / 3);
-            qSet.add(`${yy}-Q${q}`);
-        });
-        Array.from(qSet).forEach(q => { // q is YYYY-Qx
-            const [yy, qq] = q.split('-');
-            optionsHtml += `<option value="${q}" ${selectedReportTime === q ? 'selected' : ''}>Quý ${qq.replace('Q', '')}/${yy}</option>`;
-        });
-    } else if (reportPeriod === 'year') {
-        const ySet = new Set();
-        allMonths.forEach(m => {
-            ySet.add(m.substring(0, 4));
-        });
-        Array.from(ySet).forEach(y => {
-            optionsHtml += `<option value="${y}" ${selectedReportTime === y ? 'selected' : ''}>Năm ${y}</option>`;
-        });
-    }
-    timeSelector.innerHTML = optionsHtml;
-    
-    // Ensure selectedReportTime is valid if options changed
-    if (!timeSelector.value) {
-        if (timeSelector.options.length > 0) {
-            selectedReportTime = timeSelector.options[0].value;
-            timeSelector.value = selectedReportTime;
-        }
-    } else {
-        selectedReportTime = timeSelector.value;
-    }
-
-    // 2. Filter bookings based on selected period
-    let filteredBookings = bookings.filter(b => {
-        if (!b.date || b.date.length < 10) return false;
-        const yy = b.date.substring(0, 4);
-        const mm = b.date.substring(5, 7);
-        if (reportPeriod === 'month') {
-            return `${yy}-${mm}` === selectedReportTime;
-        } else if (reportPeriod === 'quarter') {
-            const q = Math.ceil(parseInt(mm) / 3);
-            return `${yy}-Q${q}` === selectedReportTime;
-        } else if (reportPeriod === 'year') {
-            return yy === selectedReportTime;
-        }
-        return false;
-    });
-
-    // 3. Aggregate Data
-    let totalBookings = filteredBookings.length;
-    let totalPax = 0;
-    let totalRevenue = 0;
-    
-    const agencyData = {};
-    const trendData = {};
-
-    filteredBookings.forEach(b => {
-        const pax = parseInt(b.pax) || 0;
-        const price = parseInt(b.price) || 0;
-        const ttPax = pax * price;
-        const bike = parseInt(b.bike_sl) || 0;
-        const bikePrice = parseInt(b.bike_price) || 0;
-        const ttBike = bike * bikePrice;
-        const water = parseInt(b.water_sl) || 0;
-        const waterPrice = parseInt(b.water_price) || 0;
-        const ttWater = water * waterPrice;
-        const foc = parseInt(b.foc) || 0;
-        const total = (b.amount !== undefined) ? parseInt(b.amount) : (ttPax + ttBike + ttWater - foc);
-
-        totalPax += pax;
-        totalRevenue += total;
-
-        const agency = b.agency || 'Khác';
-        if (!agencyData[agency]) {
-            agencyData[agency] = { revenue: 0, count: 0 };
-        }
-        agencyData[agency].revenue += total;
-        agencyData[agency].count += 1;
-
-        // Group by Date for trend
-        let trendKey = b.date; // default is YYYY-MM-DD
-        if (reportPeriod === 'year') {
-            trendKey = b.date.substring(0, 7); // Group by YYYY-MM if year view
-        }
-        if (!trendData[trendKey]) {
-            trendData[trendKey] = 0;
-        }
-        trendData[trendKey] += total;
-    });
-
-    // 4. Update KPIs
-    document.getElementById('kpi-bookings').innerText = totalBookings;
-    document.getElementById('kpi-pax').innerText = totalPax;
-    document.getElementById('kpi-revenue').innerText = formatCurrency(totalRevenue);
-
-    // 5. Render ECharts
-    if (typeof echarts === 'undefined') return;
-
-    // A) Revenue Trend
-    const chartTrend = echarts.init(document.getElementById('chart-revenue-trend'));
-    const trendKeys = Object.keys(trendData).sort(); // YYYY-MM-DD or YYYY-MM sorts alphabetically correctly
-    
-    const formattedTrendKeys = trendKeys.map(k => {
-        if (k.length === 10) {
-            const [y, m, d] = k.split('-');
-            return `${d}/${m}`;
-        } else if (k.length === 7) {
-            const [y, m] = k.split('-');
-            return `T${m}`;
-        }
-        return k;
-    });
-
-    chartTrend.setOption({
-        tooltip: { trigger: 'axis', formatter: (params) => `${params[0].name}<br/>Doanh thu: <b>${formatCurrency(params[0].value)}</b>` },
-        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-        xAxis: { type: 'category', boundaryGap: false, data: formattedTrendKeys },
-        yAxis: { type: 'value', axisLabel: { formatter: (val) => (val / 1000000).toFixed(1) + 'M' } },
-        series: [{
-            name: 'Doanh Thu',
-            type: 'line',
-            smooth: true,
-            lineStyle: { width: 3, color: '#0ea5e9' },
-            areaStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                    { offset: 0, color: 'rgba(14, 165, 233, 0.4)' },
-                    { offset: 1, color: 'rgba(14, 165, 233, 0.05)' }
-                ])
-            },
-            data: trendKeys.map(k => trendData[k])
-        }]
-    });
-
-    // B) Top 10 Customers (Agencies)
-    const chartTop = echarts.init(document.getElementById('chart-top-customers'));
-    const topAgencies = Object.entries(agencyData)
-        .sort((a, b) => b[1].revenue - a[1].revenue)
-        .slice(0, 10)
-        .reverse();
-
-    chartTop.setOption({
-        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: (params) => `${params[0].name}<br/>Doanh thu: <b>${formatCurrency(params[0].value)}</b>` },
-        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-        xAxis: { type: 'value', axisLabel: { formatter: (val) => (val / 1000000).toFixed(1) + 'M' } },
-        yAxis: { type: 'category', data: topAgencies.map(a => a[0]), axisLabel: { width: 100, overflow: 'truncate' } },
-        series: [{
-            name: 'Doanh Thu',
-            type: 'bar',
-            itemStyle: { color: '#f59e0b', borderRadius: [0, 4, 4, 0] },
-            data: topAgencies.map(a => a[1].revenue)
-        }]
-    });
-
-    // C) Debt / Revenue Share by Agency (Pie Chart)
-    const chartDebt = echarts.init(document.getElementById('chart-debt-agency'));
-    const pieData = Object.entries(agencyData)
-        .sort((a, b) => b[1].revenue - a[1].revenue)
-        .slice(0, 15)
-        .map(a => ({ name: a[0], value: a[1].revenue }));
-
-    chartDebt.setOption({
-        tooltip: { trigger: 'item', formatter: (params) => `${params.name}<br/>Doanh thu: <b>${formatCurrency(params.value)}</b> (${params.percent}%)` },
-        legend: { type: 'scroll', orient: 'vertical', right: 10, top: 20, bottom: 20 },
-        series: [{
-            name: 'Đại lý',
-            type: 'pie',
-            radius: ['40%', '70%'],
-            center: ['40%', '50%'],
-            avoidLabelOverlap: false,
-            itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
-            label: { show: false, position: 'center' },
-            emphasis: {
-                label: { show: true, fontSize: '14', fontWeight: 'bold' }
-            },
-            labelLine: { show: false },
-            data: pieData
-        }]
-    });
-    
-    window.addEventListener('resize', () => {
-        if(chartTrend) chartTrend.resize();
-        if(chartTop) chartTop.resize();
-        if(chartDebt) chartDebt.resize();
-    });
 }
