@@ -207,14 +207,15 @@ function doGet(e) {
         // Bỏ qua các sheet không phải là dữ liệu (như Tổng Hợp, Data...) hoặc bị ẩn
         if (sheet.isSheetHidden() || sheetName.toLowerCase().includes("tổng hợp")) continue;
         
-        const values = sheet.getDataRange().getValues();
+        const values = sheet.getDataRange().getDisplayValues();
         // Dữ liệu bắt đầu từ dòng 5 (index 4)
         for (let r = 4; r < values.length; r++) {
             const dateStr = values[r][0];
             const code = values[r][3];
             
-            // Bỏ qua dòng trống
-            if (!dateStr || dateStr.toString().trim() === '' || dateStr === 'Ngày') continue;
+            // Bỏ qua dòng trống hoặc dòng tiêu đề
+            const dateString = dateStr ? dateStr.toString().trim().toLowerCase() : '';
+            if (!dateString || dateString.includes('ngày') || dateString === 'date') continue;
             
             allBookings.push({
                 id: Date.now() + Math.floor(Math.random() * 1000000) + r,

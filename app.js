@@ -729,7 +729,7 @@ function renderDebtMonthFilter() {
     const agencies = new Set();
     
     bookings.forEach(b => {
-        if(b.date) {
+        if(b.date && b.date.match(/^\d{4}-\d{2}/)) {
             const ym = b.date.substring(0, 7); // yyyy-mm
             months.add(ym);
         }
