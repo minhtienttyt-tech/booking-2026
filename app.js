@@ -892,29 +892,7 @@ function renderDebtReport() {
     lucide.createIcons();
 }
 
-function exportDebtExcel() {
-    const monthFilter = document.getElementById('debt-month-filter').value;
-    const agencyFilter = document.getElementById('debt-agency-filter').value;
-    
-    let monthText = "Tất cả";
-    if (monthFilter) {
-        const [year, month] = monthFilter.split('-');
-        monthText = `${month}/${year}`;
-    }
-    
-    const companyText = agencyFilter || "Tất cả Công ty";
-
-    // Lọc dữ liệu
-    let dataToExport = bookings;
-    if (monthFilter) {
-        dataToExport = dataToExport.filter(b => b.date && b.date.startsWith(monthFilter));
-    }
-    if (agencyFilter) {
-        dataToExport = dataToExport.filter(b => b.agency === agencyFilter);
-    }
-    
-    dataToExport.sort((a, b) => new Date(a.date) - new Date(b.date));
-
+function generateDebtExcelWorkbook(dataToExport, monthText, companyText) {
     const aoa = [];
     
     aoa.push(["CÔNG TY TNHH MTV DU LỊCH VĂN HÓA ĐÔNG DƯƠNG", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]);
@@ -1034,7 +1012,6 @@ function exportDebtExcel() {
         { wch: 15 }, { wch: 12 }, { wch: 30 }, { wch: 12 }
     ];
 
-    // Áp dụng style (màu sắc, viền, font, pageSetup) cho file Excel đẹp mắt
     const range = XLSX.utils.decode_range(ws['!ref']);
     for(let R = 0; R <= range.e.r; ++R) {
         for(let C = 0; C <= range.e.c; ++C) {
@@ -1045,7 +1022,6 @@ function exportDebtExcel() {
             let cell = ws[cell_ref];
             if (!cell.s) cell.s = {};
             
-            // Default border and alignment cho dữ liệu (R >= 5)
             if (R >= 5) {
                 cell.s.border = {
                     top: { style: 'thin', color: { auto: 1 } },
@@ -1054,11 +1030,9 @@ function exportDebtExcel() {
                     right: { style: 'thin', color: { auto: 1 } }
                 };
                 cell.s.alignment = { vertical: 'center' };
-                // Thêm wrap text cho ghi chú
                 if (C === 15) cell.s.alignment.wrapText = true;
             }
             
-            // Header chính
             if (R === 0 && C === 0) {
                 cell.s.font = { bold: true, sz: 12, color: { rgb: "1F497D" } };
             }
@@ -1070,44 +1044,110 @@ function exportDebtExcel() {
                 cell.s.font = { bold: true };
             }
             
-            // Header Bảng
             if (R === 5 || R === 6) {
                 cell.s.font = { bold: true };
                 cell.s.fill = { fgColor: { rgb: "EFEFEF" } };
                 cell.s.alignment = { horizontal: "center", vertical: "center", wrapText: true };
             }
             
-            // Dòng TỔNG CỘNG
             if (R === range.e.r) {
                 cell.s.font = { bold: true };
-                cell.s.fill = { fgColor: { rgb: "FFF2CC" } }; // Màu vàng nhẹ
+                cell.s.fill = { fgColor: { rgb: "FFF2CC" } };
                 if (C === 0) {
                     cell.s.alignment = { horizontal: "center", vertical: "center" };
                 }
             }
             
-            // Căn lề số tiền và số lượng
             if (R > 6 && R <= range.e.r && (C >= 4 && C <= 13 || C === 16)) {
                 if (C !== 15 && C !== 14) {
                     cell.s.alignment = { horizontal: "right", vertical: "center" };
                     if (typeof cell.v === 'number' || (typeof cell.v === 'string' && !isNaN(cell.v) && cell.v !== '')) {
-                        cell.t = 'n'; // Ép kiểu số
-                        cell.z = '#,##0'; // Định dạng số có dấu phẩy
+                        cell.t = 'n';
+                        cell.z = '#,##0';
                     }
                 }
             }
         }
     }
 
-    // Set page orientation to landscape for A4
     ws['!pageSetup'] = { orientation: 'landscape', paperSize: 9, fitToWidth: 1 };
-
     XLSX.utils.book_append_sheet(wb, ws, "CongNo");
+    return wb;
+}
 
-    const fileNameDate = monthFilter ? monthFilter : 'TatCa';
-    const fileNameAgency = agencyFilter ? agencyFilter.replace(/[^a-zA-Z0-9]/g, '') : 'TatCaCTY';
+function exportDebtExcel() {
+    const monthFilter = document.getElementById('debt-month-filter').value;
+    const agencyFilter = document.getElementById('debt-agency-filter').value;
     
-    XLSX.writeFile(wb, `Bao_Cao_Cong_No_${fileNameAgency}_${fileNameDate}.xlsx`);
+    let monthText = "Tất cả";
+    if (monthFilter) {
+        const [year, month] = monthFilter.split('-');
+        monthText = `${month}/${year}`;
+    }
+    
+    let filteredBookings = bookings;
+    if (monthFilter) {
+        filteredBookings = filteredBookings.filter(b => b.date && b.date.startsWith(monthFilter));
+    }
+
+    if (agencyFilter) {
+        // Xuất 1 file
+        let dataToExport = filteredBookings.filter(b => b.agency === agencyFilter);
+        dataToExport.sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        const wb = generateDebtExcelWorkbook(dataToExport, monthText, agencyFilter);
+        
+        const fileNameDate = monthFilter ? monthFilter : 'TatCa';
+        const fileNameAgency = agencyFilter.replace(/[^a-zA-Z0-9]/g, '');
+        XLSX.writeFile(wb, `Bao_Cao_Cong_No_${fileNameAgency}_${fileNameDate}.xlsx`);
+    } else {
+        // Xuất nhiều file và gom vào file zip
+        if (typeof JSZip === 'undefined') {
+            alert('Thư viện JSZip chưa được tải. Vui lòng tải lại trang hoặc kiểm tra kết nối mạng.');
+            return;
+        }
+        
+        const zip = new JSZip();
+        let dataByAgency = {};
+        
+        filteredBookings.forEach(b => {
+            const ag = b.agency || 'Khac';
+            if (!dataByAgency[ag]) dataByAgency[ag] = [];
+            dataByAgency[ag].push(b);
+        });
+        
+        const keys = Object.keys(dataByAgency);
+        if (keys.length === 0) {
+            showToast('Không có dữ liệu để xuất', 'alert-circle');
+            return;
+        }
+
+        showToast('Đang tạo file nén (ZIP), vui lòng đợi...', 'refresh-cw');
+        
+        for (const agency of keys) {
+            let dataToExport = dataByAgency[agency];
+            dataToExport.sort((a, b) => new Date(a.date) - new Date(b.date));
+            const wb = generateDebtExcelWorkbook(dataToExport, monthText, agency);
+            
+            // Create buffer
+            const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            
+            const fileNameDate = monthFilter ? monthFilter : 'TatCa';
+            const fileNameAgency = agency.replace(/[^a-zA-Z0-9]/g, '');
+            zip.file(`Bao_Cao_Cong_No_${fileNameAgency}_${fileNameDate}.xlsx`, excelBuffer);
+        }
+        
+        zip.generateAsync({ type: "blob" }).then(function(content) {
+            const fileNameDate = monthFilter ? monthFilter : 'TatCa';
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(content);
+            link.download = `Bao_Cao_Cong_No_TatCa_Cac_Cong_Ty_${fileNameDate}.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('Đã tải xuống thành công!', 'check-circle-2');
+        });
+    }
 }
 
 function formatDateForApp(str) {
