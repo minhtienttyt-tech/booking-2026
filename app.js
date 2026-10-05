@@ -236,7 +236,7 @@ function updateStats() {
     const totalRev = bookings.reduce((sum, b) => sum + parseVND(b.amount), 0);
     
     document.getElementById('stat-today-count').innerText = todayBookings.length;
-    document.getElementById('stat-total-pax').innerText = totalPax;
+    document.getElementById('stat-total-pax').innerText = formatPax(totalPax);
     document.getElementById('stat-revenue').innerText = formatCurrency(totalRev);
 }
 
@@ -332,7 +332,7 @@ function renderTable() {
             <td class="px-4 py-4 whitespace-nowrap font-bold text-slate-800">${b.agency || ''}</td>
             <td class="px-4 py-4 whitespace-nowrap truncate max-w-[120px]" title="${b.operator || ''}">${b.operator || ''}</td>
             <td class="px-4 py-4 whitespace-nowrap font-medium text-slate-700">${b.code || ''}</td>
-            <td class="px-4 py-4 text-center text-amber-700 font-semibold">${pax}</td>
+            <td class="px-4 py-4 text-center text-amber-700 font-semibold">${formatPax(pax)}</td>
             <td class="px-4 py-4 text-right font-bold text-amber-600">${formatCurrency(total)}</td>
             <td class="px-4 py-4 text-center">
                 ${hasInvoice ? `<span class="px-2 py-1 bg-emerald-50 text-emerald-600 rounded text-[10px] font-bold border border-emerald-200">${b.invoice}</span>` : '<span class="text-slate-300">-</span>'}
@@ -373,7 +373,7 @@ function renderAgencyStats() {
         div.innerHTML = `
             <div class="flex justify-between items-center mb-2">
                 <span class="text-sm font-semibold text-slate-700">${name}</span>
-                <span class="text-xs font-bold text-slate-500">${data.pax} Pax (${data.count} bookings)</span>
+                <span class="text-xs font-bold text-slate-500">${formatPax(data.pax)} Pax (${data.count} bookings)</span>
             </div>
             <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                 <div class="bg-amber-500 h-full rounded-full transition-all duration-1000" style="width: ${percentage}%"></div>
@@ -552,6 +552,11 @@ function parsePax(val) {
     const str = String(val);
     const cleaned = str.replace(/,/g, '.').replace(/[^0-9.-]/g, '');
     return parseFloat(cleaned) || 0;
+}
+
+function formatPax(pax) {
+    if (pax === 0 || pax === '' || pax === undefined) return '0';
+    return pax.toString().replace('.', ',');
 }
 
 function populateAgencyFilter() {
@@ -836,7 +841,7 @@ function renderDebtReport() {
                 <td class="px-3 py-3 border-b border-slate-100 whitespace-nowrap truncate max-w-[150px]" title="${b.operator || ''}">${b.operator || ''}</td>
                 <td class="px-3 py-3 border-b border-slate-100 whitespace-nowrap font-medium text-slate-700">${b.agency || ''}</td>
                 <td class="px-3 py-3 border-b border-slate-100 whitespace-nowrap font-medium text-slate-700">${b.code || ''}</td>
-                <td class="px-3 py-3 border-b border-slate-100 text-center">${pax}</td>
+                <td class="px-3 py-3 border-b border-slate-100 text-center">${formatPax(pax)}</td>
                 <td class="px-3 py-3 border-b border-slate-100 text-right text-slate-600">${formatCurrency(ttPax)}</td>
                 <td class="px-3 py-3 border-b border-slate-100 text-right text-slate-600">${formatCurrency(ttMoto)}</td>
                 <td class="px-3 py-3 border-b border-slate-100 text-right text-slate-600">${formatCurrency(ttBike)}</td>
@@ -850,7 +855,7 @@ function renderDebtReport() {
             list.appendChild(tr);
         });
         
-        document.getElementById('debt-detail-total-pax').innerText = sumPax;
+        document.getElementById('debt-detail-total-pax').innerText = formatPax(sumPax);
         document.getElementById('debt-detail-total-amount').innerText = formatCurrency(sumAmount);
         document.getElementById('debt-detail-total-invoices').innerText = sumInvoices;
         
