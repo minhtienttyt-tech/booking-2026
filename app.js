@@ -232,8 +232,8 @@ function updateStats() {
     const today = new Date().toISOString().split('T')[0];
     const todayBookings = bookings.filter(b => b.date === today);
     
-    const totalPax = bookings.reduce((sum, b) => sum + parseFloat(b.pax || 0), 0);
-    const totalRev = bookings.reduce((sum, b) => sum + parseInt(b.amount || 0), 0);
+    const totalPax = bookings.reduce((sum, b) => sum + parsePax(b.pax), 0);
+    const totalRev = bookings.reduce((sum, b) => sum + parseVND(b.amount), 0);
     
     document.getElementById('stat-today-count').innerText = todayBookings.length;
     document.getElementById('stat-total-pax').innerText = totalPax;
@@ -311,20 +311,20 @@ function renderTable() {
         tr.className = "hover:bg-slate-50 transition-colors";
         
         // Tính toán các loại tiền nếu cần
-        const pax = parseFloat(b.pax) || 0;
-        const price = parseInt(b.price) || 0;
+        const pax = parsePax(b.pax);
+        const price = parseVND(b.price);
         const ttPax = pax * price;
-        const bike = parseFloat(b.bike_sl) || 0;
-        const bikePrice = parseInt(b.bike_price) || 0;
+        const bike = parsePax(b.bike_sl);
+        const bikePrice = parseVND(b.bike_price);
         const ttBike = bike * bikePrice;
-        const water = parseFloat(b.water_sl) || 0;
-        const waterPrice = parseInt(b.water_price) || 0;
+        const water = parsePax(b.water_sl);
+        const waterPrice = parseVND(b.water_price);
         const ttWater = water * waterPrice;
-        const moto = parseFloat(b.moto_sl) || 0;
-        const motoPrice = parseInt(b.moto_price) || 0;
+        const moto = parsePax(b.moto_sl);
+        const motoPrice = parseVND(b.moto_price);
         const ttMoto = moto * motoPrice;
-        const foc = parseInt(b.foc) || 0;
-        const total = (b.amount !== undefined) ? parseInt(b.amount) : (ttPax + ttBike + ttWater + ttMoto - foc);
+        const foc = parseVND(b.foc);
+        const total = (b.amount !== undefined && b.amount !== "") ? parseVND(b.amount) : (ttPax + ttBike + ttWater + ttMoto - foc);
         const hasInvoice = (b.status === 'invoiced' || (b.invoice && b.invoice.trim() !== ''));
 
         tr.innerHTML = `
@@ -359,14 +359,14 @@ function renderAgencyStats() {
     const agencyData = {};
     bookings.forEach(b => {
         if (!agencyData[b.agency]) agencyData[b.agency] = { pax: 0, count: 0 };
-        agencyData[b.agency].pax += parseFloat(b.pax || 0);
+        agencyData[b.agency].pax += parsePax(b.pax);
         agencyData[b.agency].count += 1;
     });
     
     const sortedAgencies = Object.entries(agencyData).sort((a, b) => b[1].pax - a[1].pax).slice(0, 5);
     
     sortedAgencies.forEach(([name, data]) => {
-        const totalPax = bookings.reduce((sum, b) => sum + parseFloat(b.pax || 0), 0);
+        const totalPax = bookings.reduce((sum, b) => sum + parsePax(b.pax), 0);
         const percentage = totalPax > 0 ? (data.pax / totalPax * 100).toFixed(0) : 0;
         
         const div = document.createElement('div');
@@ -385,14 +385,14 @@ function renderAgencyStats() {
 
 // --- Form Handling ---
 function calculateTotalForm() {
-    const pax = parseFloat(document.getElementById('form-pax').value) || 0;
-    const price = parseInt(document.getElementById('form-price').value) || 0;
-    const bike_sl = parseInt(document.getElementById('form-bike-sl').value) || 0;
-    const bike_price = parseInt(document.getElementById('form-bike-price').value) || 0;
-    const water_sl = parseInt(document.getElementById('form-water-sl').value) || 0;
-    const water_price = parseInt(document.getElementById('form-water-price').value) || 0;
-    const moto_sl = parseInt(document.getElementById('form-moto-sl').value) || 0;
-    const moto_price = parseInt(document.getElementById('form-moto-price').value) || 0;
+    const pax = parsePax(document.getElementById('form-pax').value);
+    const price = parseVND(document.getElementById('form-price').value);
+    const bike_sl = parsePax(document.getElementById('form-bike-sl').value);
+    const bike_price = parseVND(document.getElementById('form-bike-price').value);
+    const water_sl = parsePax(document.getElementById('form-water-sl').value);
+    const water_price = parseVND(document.getElementById('form-water-price').value);
+    const moto_sl = parsePax(document.getElementById('form-moto-sl').value);
+    const moto_price = parseVND(document.getElementById('form-moto-price').value);
     
     // FOC chỉ để ghi chú, không trừ vào tổng tiền
     const total = (pax * price) + (bike_sl * bike_price) + (water_sl * water_price) + (moto_sl * moto_price);
@@ -424,14 +424,14 @@ function handleFormSubmit(e) {
     e.preventDefault();
     
     const id = document.getElementById('booking-id').value;
-    const pax = parseFloat(document.getElementById('form-pax').value) || 0;
-    const price = parseInt(document.getElementById('form-price').value) || 0;
-    const bike_sl = parseInt(document.getElementById('form-bike-sl').value) || 0;
-    const bike_price = parseInt(document.getElementById('form-bike-price').value) || 0;
-    const water_sl = parseInt(document.getElementById('form-water-sl').value) || 0;
-    const water_price = parseInt(document.getElementById('form-water-price').value) || 0;
-    const moto_sl = parseInt(document.getElementById('form-moto-sl').value) || 0;
-    const moto_price = parseInt(document.getElementById('form-moto-price').value) || 0;
+    const pax = parsePax(document.getElementById('form-pax').value);
+    const price = parseVND(document.getElementById('form-price').value);
+    const bike_sl = parsePax(document.getElementById('form-bike-sl').value);
+    const bike_price = parseVND(document.getElementById('form-bike-price').value);
+    const water_sl = parsePax(document.getElementById('form-water-sl').value);
+    const water_price = parseVND(document.getElementById('form-water-price').value);
+    const moto_sl = parsePax(document.getElementById('form-moto-sl').value);
+    const moto_price = parseVND(document.getElementById('form-moto-price').value);
     const focInput = document.getElementById('form-foc').value.trim();
     
     // Tổng tiền không trừ FOC
@@ -538,6 +538,22 @@ function deleteBooking(id) {
 }
 
 // --- Helpers ---
+function parseVND(val) {
+    if (val === undefined || val === null || val === '') return 0;
+    if (typeof val === 'number') return Math.round(val);
+    const str = String(val);
+    const cleaned = str.replace(/[^0-9-]/g, '');
+    return parseInt(cleaned, 10) || 0;
+}
+
+function parsePax(val) {
+    if (val === undefined || val === null || val === '') return 0;
+    if (typeof val === 'number') return val;
+    const str = String(val);
+    const cleaned = str.replace(/,/g, '.').replace(/[^0-9.-]/g, '');
+    return parseFloat(cleaned) || 0;
+}
+
 function populateAgencyFilter() {
     const filter = document.getElementById('filter-agency');
     const formAgency = document.getElementById('form-agency');
@@ -789,24 +805,24 @@ function renderDebtReport() {
         let sumPax = 0, sumAmount = 0, sumInvoices = 0;
         
         filteredBookings.forEach(b => {
-            const pax = parseFloat(b.pax) || 0;
-            const price = parseInt(b.price) || 0;
+            const pax = parsePax(b.pax);
+            const price = parseVND(b.price);
             const ttPax = pax * price;
             
-            const bike = parseFloat(b.bike_sl) || 0;
-            const bikePrice = parseInt(b.bike_price) || 0;
+            const bike = parsePax(b.bike_sl);
+            const bikePrice = parseVND(b.bike_price);
             const ttBike = bike * bikePrice;
             
-            const water = parseFloat(b.water_sl) || 0;
-            const waterPrice = parseInt(b.water_price) || 0;
+            const water = parsePax(b.water_sl);
+            const waterPrice = parseVND(b.water_price);
             const ttWater = water * waterPrice;
             
-            const moto = parseFloat(b.moto_sl) || 0;
-            const motoPrice = parseInt(b.moto_price) || 0;
+            const moto = parsePax(b.moto_sl);
+            const motoPrice = parseVND(b.moto_price);
             const ttMoto = moto * motoPrice;
             
-            const foc = parseInt(b.foc) || 0;
-            const total = (b.amount !== undefined) ? parseInt(b.amount) : (ttPax + ttBike + ttWater + ttMoto - foc);
+            const foc = parseVND(b.foc);
+            const total = (b.amount !== undefined && b.amount !== "") ? parseVND(b.amount) : (ttPax + ttBike + ttWater + ttMoto - foc);
             
             sumPax += pax;
             sumAmount += total;
@@ -854,7 +870,23 @@ function renderDebtReport() {
                 agencyDebt[agency] = { count: 0, totalAmount: 0, invoices: 0 };
             }
             agencyDebt[agency].count += 1;
-            agencyDebt[agency].totalAmount += (b.amount || 0);
+            
+            const pax = parsePax(b.pax);
+            const price = parseVND(b.price);
+            const ttPax = pax * price;
+            const bike = parsePax(b.bike_sl);
+            const bikePrice = parseVND(b.bike_price);
+            const ttBike = bike * bikePrice;
+            const water = parsePax(b.water_sl);
+            const waterPrice = parseVND(b.water_price);
+            const ttWater = water * waterPrice;
+            const moto = parsePax(b.moto_sl);
+            const motoPrice = parseVND(b.moto_price);
+            const ttMoto = moto * motoPrice;
+            const foc = parseVND(b.foc);
+            const total = (b.amount !== undefined && b.amount !== "") ? parseVND(b.amount) : (ttPax + ttBike + ttWater + ttMoto - foc);
+            
+            agencyDebt[agency].totalAmount += total;
             if (b.status === 'invoiced' || (b.invoice && b.invoice.trim() !== '')) {
                 agencyDebt[agency].invoices += 1;
             }
@@ -925,24 +957,24 @@ function generateDebtExcelWorkbook(dataToExport, monthText, companyText) {
     let sumTongTien = 0;
 
     dataToExport.forEach(b => {
-        const pax = parseFloat(b.pax) || 0;
-        const price = parseInt(b.price) || 0;
+        const pax = parsePax(b.pax);
+        const price = parseVND(b.price);
         const ttPax = pax * price;
         
-        const bike = parseInt(b.bike_sl) || 0;
-        const bikePrice = parseInt(b.bike_price) || 0;
+        const bike = parsePax(b.bike_sl);
+        const bikePrice = parseVND(b.bike_price);
         const ttBike = bike * bikePrice;
         
-        const water = parseInt(b.water_sl) || 0;
-        const waterPrice = parseInt(b.water_price) || 0;
+        const water = parsePax(b.water_sl);
+        const waterPrice = parseVND(b.water_price);
         const ttWater = water * waterPrice;
         
-        const moto = parseInt(b.moto_sl) || 0;
-        const motoPrice = parseInt(b.moto_price) || 0;
+        const moto = parsePax(b.moto_sl);
+        const motoPrice = parseVND(b.moto_price);
         const ttMoto = moto * motoPrice;
         
-        const foc = parseInt(b.foc) || 0;
-        const total = (b.amount !== undefined) ? parseInt(b.amount) : (ttPax + ttBike + ttWater + ttMoto - foc);
+        const foc = parseVND(b.foc);
+        const total = (b.amount !== undefined && b.amount !== "") ? parseVND(b.amount) : (ttPax + ttBike + ttWater + ttMoto - foc);
         
         sumThanhTienPax += ttPax;
         sumThanhTienXe += ttBike;
