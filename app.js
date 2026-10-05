@@ -232,7 +232,7 @@ function updateStats() {
     const today = new Date().toISOString().split('T')[0];
     const todayBookings = bookings.filter(b => b.date === today);
     
-    const totalPax = bookings.reduce((sum, b) => sum + parseInt(b.pax || 0), 0);
+    const totalPax = bookings.reduce((sum, b) => sum + parseFloat(b.pax || 0), 0);
     const totalRev = bookings.reduce((sum, b) => sum + parseInt(b.amount || 0), 0);
     
     document.getElementById('stat-today-count').innerText = todayBookings.length;
@@ -359,14 +359,14 @@ function renderAgencyStats() {
     const agencyData = {};
     bookings.forEach(b => {
         if (!agencyData[b.agency]) agencyData[b.agency] = { pax: 0, count: 0 };
-        agencyData[b.agency].pax += parseInt(b.pax || 0);
+        agencyData[b.agency].pax += parseFloat(b.pax || 0);
         agencyData[b.agency].count += 1;
     });
     
     const sortedAgencies = Object.entries(agencyData).sort((a, b) => b[1].pax - a[1].pax).slice(0, 5);
     
     sortedAgencies.forEach(([name, data]) => {
-        const totalPax = bookings.reduce((sum, b) => sum + parseInt(b.pax || 0), 0);
+        const totalPax = bookings.reduce((sum, b) => sum + parseFloat(b.pax || 0), 0);
         const percentage = totalPax > 0 ? (data.pax / totalPax * 100).toFixed(0) : 0;
         
         const div = document.createElement('div');
@@ -385,7 +385,7 @@ function renderAgencyStats() {
 
 // --- Form Handling ---
 function calculateTotalForm() {
-    const pax = parseInt(document.getElementById('form-pax').value) || 0;
+    const pax = parseFloat(document.getElementById('form-pax').value) || 0;
     const price = parseInt(document.getElementById('form-price').value) || 0;
     const bike_sl = parseInt(document.getElementById('form-bike-sl').value) || 0;
     const bike_price = parseInt(document.getElementById('form-bike-price').value) || 0;
@@ -424,7 +424,7 @@ function handleFormSubmit(e) {
     e.preventDefault();
     
     const id = document.getElementById('booking-id').value;
-    const pax = parseInt(document.getElementById('form-pax').value) || 0;
+    const pax = parseFloat(document.getElementById('form-pax').value) || 0;
     const price = parseInt(document.getElementById('form-price').value) || 0;
     const bike_sl = parseInt(document.getElementById('form-bike-sl').value) || 0;
     const bike_price = parseInt(document.getElementById('form-bike-price').value) || 0;
@@ -818,6 +818,7 @@ function renderDebtReport() {
             tr.innerHTML = `
                 <td class="px-3 py-3 border-b border-slate-100 whitespace-nowrap text-slate-700">${b.date ? b.date.split('-').reverse().join('/') : ''}</td>
                 <td class="px-3 py-3 border-b border-slate-100 whitespace-nowrap truncate max-w-[150px]" title="${b.operator || ''}">${b.operator || ''}</td>
+                <td class="px-3 py-3 border-b border-slate-100 whitespace-nowrap font-medium text-slate-700">${b.agency || ''}</td>
                 <td class="px-3 py-3 border-b border-slate-100 whitespace-nowrap font-medium text-slate-700">${b.code || ''}</td>
                 <td class="px-3 py-3 border-b border-slate-100 text-center">${pax}</td>
                 <td class="px-3 py-3 border-b border-slate-100 text-right text-slate-600">${formatCurrency(ttPax)}</td>
