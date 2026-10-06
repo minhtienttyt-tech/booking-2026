@@ -188,6 +188,22 @@ function handleLegacyBatchUpdate(updates) {
   })).setMimeType(ContentService.MimeType.JSON);
 }
 
+function parseSheetVND(val) {
+  if (val === undefined || val === null || val === '') return 0;
+  if (typeof val === 'number') return Math.round(val);
+  var str = val.toString().trim();
+  var cleaned = str.replace(/[^0-9-]/g, '');
+  return parseInt(cleaned, 10) || 0;
+}
+
+function parseSheetPax(val) {
+  if (val === undefined || val === null || val === '') return 0;
+  if (typeof val === 'number') return val;
+  var str = val.toString().trim();
+  var cleaned = str.replace(/,/g, '.').replace(/[^0-9.-]/g, '');
+  return parseFloat(cleaned) || 0;
+}
+
 // Hàm DoGet trả về toàn bộ dữ liệu (Thay thế cơ chế đọc CSV cũ)
 function doGet(e) {
   const headers = {
@@ -223,18 +239,18 @@ function doGet(e) {
                 agency: sheetName,
                 code: code ? code.toString().trim() : '',
                 operator: values[r][1] ? values[r][1].toString() : '',
-                pax: parseInt(values[r][4]) || 0,
-                price: parseInt(values[r][5]) || 0,
-                moto_sl: parseInt(values[r][7]) || 0,
-                moto_price: parseInt(values[r][8]) || 150000,
-                bike_sl: parseInt(values[r][10]) || 0,
-                bike_price: parseInt(values[r][11]) || 100000,
-                water_sl: parseInt(values[r][13]) || 0,
-                water_price: parseInt(values[r][14]) || 10000,
-                amount: parseInt(values[r][16]) || 0,
+                pax: parseSheetPax(values[r][4]),
+                price: parseSheetVND(values[r][5]),
+                moto_sl: parseSheetPax(values[r][7]),
+                moto_price: parseSheetVND(values[r][8]) || 150000,
+                bike_sl: parseSheetPax(values[r][10]),
+                bike_price: parseSheetVND(values[r][11]) || 100000,
+                water_sl: parseSheetPax(values[r][13]),
+                water_price: parseSheetVND(values[r][14]) || 10000,
+                amount: parseSheetVND(values[r][16]),
                 invoice: values[r][17] ? values[r][17].toString() : '',
                 guest: values[r][18] ? values[r][18].toString() : 'Khách đoàn',
-                foc: parseInt(values[r][19]) || 0,
+                foc: parseSheetVND(values[r][19]),
                 status: (values[r][17] && values[r][17].toString().trim() !== '') ? 'invoiced' : 'confirmed',
                 note: 'Đồng bộ từ Google Sheets'
             });
