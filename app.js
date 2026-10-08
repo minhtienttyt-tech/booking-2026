@@ -681,7 +681,7 @@ function exportPDF() {
     
     doc.save(`Booking_Report_2026.pdf`);
 }
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyt8WzKKNguWBO1dsruYehMbTHhQQMgkElUuu3dHr6fORQjs34IrBOk8BUpXc7YZA/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw9nPz6HZ_f-zJPoWn2-P4zmYMqSl3upkJSYFvSJG6iIfTm0f2Ldlg22izeKF1SrsFG/exec";
 
 async function syncSingleBookingToSheet(action, booking) {
     if (!booking.agency) return; 
