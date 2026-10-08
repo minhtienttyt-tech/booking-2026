@@ -671,10 +671,10 @@ function exportXlsx() {
         'Ngày đến': formatDate(b.date),
         'Đại lý': b.agency,
         'Khách/Tour': b.guest,
-        'Người lớn': b.pax,
+        'Người lớn': parsePax(b.pax),
         'Trẻ em': b.child,
         'Dịch vụ': b.service,
-        'Giá trị': b.amount,
+        'Giá trị': calculateBookingTotal(b),
         'Trạng thái': translateStatus(b.status),
         'Ghi chú': b.note
     }));
@@ -1134,10 +1134,16 @@ function generateDebtExcelWorkbook(dataToExport, monthText, companyText) {
             
             if (R > 6 && R <= range.e.r && (C >= 4 && C <= 13 || C === 16)) {
                 if (C !== 15 && C !== 14) {
-                    cell.s.alignment = { horizontal: "right", vertical: "center" };
                     if (typeof cell.v === 'number' || (typeof cell.v === 'string' && !isNaN(cell.v) && cell.v !== '')) {
                         cell.t = 'n';
-                        cell.z = '#,##0';
+                        // Cột SL (Pax, Xe máy, Xe đạp, Nước)
+                        if (C === 4 || C === 7 || C === 10 || C === 13) {
+                            cell.s.alignment = { horizontal: "center", vertical: "center" };
+                            cell.z = '#,##0.##';
+                        } else {
+                            cell.s.alignment = { horizontal: "right", vertical: "center" };
+                            cell.z = '#,##0';
+                        }
                     }
                 }
             }
