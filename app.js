@@ -233,7 +233,7 @@ function updateStats() {
     const todayBookings = bookings.filter(b => b.date === today);
     
     const totalPax = bookings.reduce((sum, b) => sum + parsePax(b.pax), 0);
-    const totalRev = bookings.reduce((sum, b) => sum + parseVND(b.amount), 0);
+    const totalRev = bookings.reduce((sum, b) => sum + calculateBookingTotal(b), 0);
     
     document.getElementById('stat-today-count').innerText = todayBookings.length;
     document.getElementById('stat-total-pax').innerText = formatPax(totalPax);
@@ -324,7 +324,7 @@ function renderTable() {
         const motoPrice = parseVND(b.moto_price);
         const ttMoto = moto * motoPrice;
         const foc = parseVND(b.foc);
-        const total = (b.amount !== undefined && b.amount !== "") ? parseVND(b.amount) : (ttPax + ttBike + ttWater + ttMoto - foc);
+        const total = calculateBookingTotal(b);
         const hasInvoice = (b.status === 'invoiced' || (b.invoice && b.invoice.trim() !== ''));
 
         tr.innerHTML = `
@@ -540,10 +540,46 @@ function deleteBooking(id) {
 // --- Helpers ---
 function parseVND(val) {
     if (val === undefined || val === null || val === '') return 0;
-    if (typeof val === 'number') return Math.round(val);
-    const str = String(val);
-    const cleaned = str.replace(/[^0-9-]/g, '');
-    return parseInt(cleaned, 10) || 0;
+    let res = 0;
+    if (typeof val === 'number') {
+        res = Math.round(val);
+    } else {
+        const str = String(val);
+        const cleaned = str.replace(/[^0-9-]/g, '');
+        res = parseInt(cleaned, 10) || 0;
+    }
+    // Nếu giá trị nhỏ > 0 và < 1000 (do bị cắt mất 000 từ Sheet, vd 180 -> 180000, 210 -> 210000)
+    if (res > 0 && res < 1000) {
+        res *= 1000;
+    }
+    return res;
+}
+
+function calculateBookingTotal(b) {
+    const pax = parsePax(b.pax);
+    const price = parseVND(b.price);
+    const ttPax = pax * price;
+    
+    const bike = parsePax(b.bike_sl);
+    const bikePrice = parseVND(b.bike_price);
+    const ttBike = bike * bikePrice;
+    
+    const water = parsePax(b.water_sl);
+    const waterPrice = parseVND(b.water_price);
+    const ttWater = water * waterPrice;
+    
+    const moto = parsePax(b.moto_sl);
+    const motoPrice = parseVND(b.moto_price);
+    const ttMoto = moto * motoPrice;
+    
+    const foc = parseVND(b.foc);
+    const calculated = ttPax + ttBike + ttWater + ttMoto - foc;
+    
+    const rawAmount = parseVND(b.amount);
+    if (rawAmount > 0 && rawAmount >= calculated * 0.5) {
+        return rawAmount;
+    }
+    return calculated > 0 ? calculated : rawAmount;
 }
 
 function parsePax(val) {
@@ -827,7 +863,7 @@ function renderDebtReport() {
             const ttMoto = moto * motoPrice;
             
             const foc = parseVND(b.foc);
-            const total = (b.amount !== undefined && b.amount !== "") ? parseVND(b.amount) : (ttPax + ttBike + ttWater + ttMoto - foc);
+            const total = calculateBookingTotal(b);
             
             sumPax += pax;
             sumAmount += total;
@@ -889,7 +925,7 @@ function renderDebtReport() {
             const motoPrice = parseVND(b.moto_price);
             const ttMoto = moto * motoPrice;
             const foc = parseVND(b.foc);
-            const total = (b.amount !== undefined && b.amount !== "") ? parseVND(b.amount) : (ttPax + ttBike + ttWater + ttMoto - foc);
+            const total = calculateBookingTotal(b);
             
             agencyDebt[agency].totalAmount += total;
             if (b.status === 'invoiced' || (b.invoice && b.invoice.trim() !== '')) {
@@ -979,7 +1015,7 @@ function generateDebtExcelWorkbook(dataToExport, monthText, companyText) {
         const ttMoto = moto * motoPrice;
         
         const foc = parseVND(b.foc);
-        const total = (b.amount !== undefined && b.amount !== "") ? parseVND(b.amount) : (ttPax + ttBike + ttWater + ttMoto - foc);
+        const total = calculateBookingTotal(b);
         
         sumThanhTienPax += ttPax;
         sumThanhTienXe += ttBike;
